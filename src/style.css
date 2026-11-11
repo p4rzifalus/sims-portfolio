@@ -1,13 +1,87 @@
+:root {
+  --ui-blue: #3d5fb8;
+  --ui-blue-dark: #22377a;
+  --ui-blue-light: #8fb0f0;
+  --ui-text: #ffffff;
+}
+
 html,
 body {
   margin: 0;
   height: 100%;
-  background: #1b1726;
-  color: #e9e4f5;
-  font-family: system-ui, sans-serif;
+  overflow: hidden;
+  background: #2a2438;
+  font-family: 'Trebuchet MS', system-ui, sans-serif;
+  user-select: none;
 }
 
-#status {
-  padding: 24px;
-  line-height: 1.5;
+#app,
+#app canvas {
+  position: fixed;
+  inset: 0;
+  display: block;
+}
+
+/* ---------- Кнопки-«таблетки» ---------- */
+.pill {
+  font: inherit;
+  font-size: 14px;
+  font-weight: bold;
+  color: var(--ui-text);
+  padding: 6px 16px;
+  border-radius: 999px;
+  border: 2px solid var(--ui-blue-light);
+  background: linear-gradient(180deg, #6c8ddc 0%, var(--ui-blue) 45%, var(--ui-blue-dark) 100%);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+}
+.pill:hover {
+  filter: brightness(1.15);
+}
+.pill:active {
+  transform: translateY(1px);
+}
+.pill.off {
+  background: linear-gradient(180deg, #8b8b98 0%, #5d5d6c 45%, #3d3d4a 100%);
+  border-color: #b4b4c2;
+}
+.pill.small {
+  font-size: 12px;
+  padding: 4px 12px;
+  opacity: 0.8;
+}
+.pill.small.active {
+  opacity: 1;
+  border-color: #40ff90;
+}
+
+#corner {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  z-index: 10;
+}
+
+/* ---------- Отладка ---------- */
+#debug-labels {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  display: none;
+}
+.cell-label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  font: bold 11px/1 ui-monospace, Menlo, monospace;
+  color: #fff;
+  text-shadow: 0 0 2px #000, 0 0 2px #000;
+}
+.cell-label.blocked {
+  color: #ffb0b8;
 }
