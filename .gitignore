@@ -1,3 +1,6 @@
 node_modules
 dist
 .DS_Store
+
+# Скриншоты-референсы из The Sims — только локально, в репозиторий не попадают
+reference/
