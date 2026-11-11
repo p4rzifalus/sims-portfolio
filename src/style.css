@@ -1,0 +1,13 @@
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: #1b1726;
+  color: #e9e4f5;
+  font-family: system-ui, sans-serif;
+}
+
+#status {
+  padding: 24px;
+  line-height: 1.5;
+}
