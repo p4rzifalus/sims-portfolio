@@ -235,7 +235,7 @@ export function buildRoom(room, furniture) {
       ...m,
       sofa: lambert({ map: tex.fabric(item.color || '#5b6e9c') }),
       sofaLight: lambert({ map: tex.fabric(item.color || '#5b6e9c'), color: '#e6e6e6' }),
-      rug: lambert({ map: tex.rug(item.color || '#8c3b3b'), polygonOffset: true, polygonOffsetFactor: -2 }),
+      rug: lambert({ map: tex.rug(item.color || '#8c3b3b') }),
     };
     const fp = footprint(item.cells);
     let obj;

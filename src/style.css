@@ -67,6 +67,213 @@ body {
   z-index: 10;
 }
 
+/* ---------- Интерфейс поверх сцены ---------- */
+/* Сам слой не ловит клики — их ловят только панели внутри,
+   поэтому клик по интерфейсу никогда не «проваливается» в сцену. */
+#ui {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+  color: var(--ui-text);
+}
+#ui > * {
+  pointer-events: auto;
+}
+#ui img {
+  image-rendering: pixelated;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Колонка портретов слева */
+.portraits {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 22px;
+  background: linear-gradient(180deg, #4d69c4, var(--ui-blue-dark));
+  border: 3px solid var(--ui-blue-light);
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.35);
+}
+.portrait {
+  --accent: #fff;
+  width: 64px;
+  height: 64px;
+  padding: 0;
+  border-radius: 16px;
+  border: 3px solid #9db4ee;
+  background: radial-gradient(circle at 50% 35%, #cfe0ff, #6f8fdc 70%);
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.12s, box-shadow 0.12s, border-color 0.12s;
+}
+.portrait:hover {
+  transform: scale(1.06);
+}
+.portrait.selected {
+  border-color: #fff;
+  box-shadow: 0 0 0 3px var(--accent), 0 0 18px 4px var(--accent);
+}
+
+/* Нижняя панель */
+.hud {
+  --accent: #fff;
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  display: flex;
+  align-items: stretch;
+  gap: 14px;
+  padding: 14px 18px 12px 14px;
+  border-top-right-radius: 34px;
+  background: linear-gradient(180deg, #5f7fd6 0%, var(--ui-blue) 40%, var(--ui-blue-dark) 100%);
+  border: 3px solid var(--ui-blue-light);
+  border-left: 0;
+  border-bottom: 0;
+  box-shadow: 0 -2px 0 rgba(0, 0, 0, 0.25), inset 0 2px 0 rgba(255, 255, 255, 0.35);
+}
+.hud-who {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.hud-portrait {
+  width: 104px;
+  height: 104px;
+  border-radius: 24px;
+  overflow: hidden;
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 3px var(--accent);
+  background: radial-gradient(circle at 50% 35%, #e3edff, #7b98e0 70%);
+}
+.hud-clock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 3px 12px;
+  border-radius: 12px;
+  background: #1b2a63;
+  box-shadow: inset 0 2px 0 rgba(0, 0, 0, 0.4);
+  line-height: 1.1;
+}
+.hud-clock .time {
+  font-size: 18px;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+}
+.hud-clock .date {
+  font-size: 11px;
+  opacity: 0.75;
+}
+.hud-info {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 12px;
+  min-width: 150px;
+}
+.hud-name {
+  font-size: 22px;
+  font-weight: bold;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.4);
+}
+.hud-action-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.hud-action {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  font-size: 28px;
+  background: radial-gradient(circle at 50% 35%, #fff8dc, #f0c35a);
+  border: 3px solid #fff;
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.3);
+}
+.hud-action.empty {
+  background: rgba(0, 0, 0, 0.18);
+  border: 3px dashed rgba(255, 255, 255, 0.45);
+  box-shadow: none;
+}
+.hud-action .cancel {
+  position: absolute;
+  top: -9px;
+  right: -9px;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background: #d8413a;
+  color: #fff;
+  font: bold 11px/1 system-ui, sans-serif;
+  cursor: pointer;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.35);
+}
+.hud-action .cancel:hover {
+  filter: brightness(1.15);
+}
+.hud-action.empty .cancel {
+  display: none;
+}
+.hud-action-label {
+  font-size: 14px;
+  font-weight: bold;
+  opacity: 0.9;
+}
+.hud-traits {
+  align-self: stretch;
+  min-width: 220px;
+  padding: 8px 12px 10px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #dfe9ff, #b3c8f5);
+  color: #1f2f6e;
+  border: 2px solid #fff;
+}
+.hud-traits-title {
+  font-size: 13px;
+  font-weight: bold;
+  text-align: center;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  opacity: 0.8;
+}
+.hud-traits-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 10px;
+}
+.trait {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: bold;
+}
+.trait-icon {
+  width: 30px;
+  height: 30px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+  border-radius: 9px;
+  background: #fff;
+  box-shadow: 0 2px 0 rgba(31, 47, 110, 0.25);
+}
+
 /* ---------- Отладка ---------- */
 #debug-labels {
   position: fixed;

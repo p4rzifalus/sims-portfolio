@@ -47,6 +47,40 @@ export function loadModel(name) {
   return cache.get(name);
 }
 
+// Светящееся кольцо под ногами выбранного персонажа.
+export function createSelectionRing() {
+  const group = new THREE.Group();
+  const make = (inner, outer, opacity, y) => {
+    const m = new THREE.Mesh(
+      new THREE.RingGeometry(inner, outer, 24).rotateX(-Math.PI / 2),
+      new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity, depthWrite: false, fog: false }),
+    );
+    m.position.y = y;
+    m.userData.noOutline = true;
+    m.raycast = () => {};
+    group.add(m);
+    return m;
+  };
+  const halo = make(0.3, 0.6, 0.35, 0); // мягкое свечение вокруг
+  const core = make(0.4, 0.5, 1, 0.002); // яркое кольцо
+  const edge = make(0.37, 0.4, 1, 0.003); // тонкий белый ободок внутри
+  group.position.y = 0.02;
+  return {
+    group,
+    setColor(hex) {
+      const c = new THREE.Color(hex);
+      core.material.color.copy(c).lerp(new THREE.Color('#ffffff'), 0.25);
+      halo.material.color.copy(c);
+      edge.material.color.set('#ffffff');
+    },
+    update(t) {
+      const s = 1 + Math.sin(t * 4) * 0.05;
+      group.scale.set(s, 1, s);
+      halo.material.opacity = 0.3 + Math.sin(t * 4) * 0.12;
+    },
+  };
+}
+
 // Привести угол к диапазону от −π до π (чтобы поворачиваться короткой стороной).
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 const smooth = (x) => x * x * (3 - 2 * x);
@@ -70,6 +104,7 @@ export class Character {
       o.userData.characterId = data.id;
     });
     applyPS1(model);
+    model.userData.characterId = data.id;
     this.model = model;
     this.armRight = model.getObjectByName('arm-right');
     this.root.add(model);
@@ -80,6 +115,8 @@ export class Character {
       new THREE.MeshBasicMaterial({ color: '#000000', transparent: true, opacity: 0.35, depthWrite: false }),
     );
     shadow.position.y = 0.012;
+    shadow.userData.noOutline = true;
+    shadow.raycast = () => {}; // тень не ловит клики
     this.root.add(shadow);
 
     // Анимации
@@ -143,8 +180,13 @@ export class Character {
     return true;
   }
 
+  get isWalking() {
+    return this.path.length > 0;
+  }
+
   stop() {
     this.path = [];
+    this.play('idle');
   }
 
   update(dt) {
