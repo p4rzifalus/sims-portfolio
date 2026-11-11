@@ -38,24 +38,29 @@ export const ps1 = {
   cameraSway: true, // едва заметное покачивание камеры, чтобы дрожание было видно
 };
 
-// ---------- Названия анимаций в файле модели ----------
-// Проверено по файлу public/models/RobotExpressive.glb. В нём есть:
-// Dance, Death, Idle, Jump, No, Punch, Running, Sitting, Standing,
-// ThumbsUp, Walking, WalkJump, Wave, Yes
+// ---------- Названия анимаций в файлах моделей ----------
+// Модели — Kenney Mini Characters (лицензия CC0), лежат в public/models/people.
+// В каждом файле 32 анимации, среди них: idle, walk, sprint, jump, sit, crouch,
+// pick-up, emote-yes, emote-no, interact-right, interact-left.
+// «Помахать» и «встать» в наборе нет — они сделаны в коде:
+// 'wave' поднимает правую руку, 'stand' — плавный переход из sit в idle.
 export const animations = {
-  idle: 'Idle',
-  walk: 'Walking',
-  sit: 'Sitting', // садится и замирает
-  stand: 'Standing', // встаёт
-  wave: 'Wave',
+  idle: 'idle',
+  walk: 'walk',
+  sit: 'sit',
 };
 
 // ---------- Персонажи ----------
+// model — какая модель из public/models/people. Есть 12 вариантов:
+//   character-female-a … character-female-f
+//   character-male-a … character-male-f
+// color — фирменный цвет персонажа (кольцо выбора, рамка портрета).
 export const characters = [
   {
     id: 'p1',
     name: 'Персонаж 1',
-    color: '#e8833a', // цвет корпуса робота
+    model: 'character-female-a',
+    color: '#e8833a',
     startCell: [2, 3], // где стоит при открытии сайта (номера клеток видны по клавише G)
     startFacing: 'south',
     traits: [
@@ -83,6 +88,7 @@ export const characters = [
   {
     id: 'p2',
     name: 'Персонаж 2',
+    model: 'character-male-a',
     color: '#4aa3c7',
     startCell: [4, 2],
     startFacing: 'south',

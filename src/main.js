@@ -146,16 +146,16 @@ setPS1(ps1On);
 const characters = [];
 let selected = null; // кем сейчас управляем (выбор появится на этапе 3)
 
-loadModel()
-  .then((gltf) => {
-    for (const data of characterData) {
-      const ch = new Character(data, gltf, grid, animations);
+Promise.all(characterData.map((data) => loadModel(data.model)))
+  .then((models) => {
+    characterData.forEach((data, i) => {
+      const ch = new Character(data, models[i], grid, animations);
       characters.push(ch);
       scene.add(ch.root);
-    }
+    });
     selected = characters[0];
   })
-  .catch((err) => console.error('Модель персонажа не загрузилась:', err));
+  .catch((err) => console.error('Модель персонажа не загрузилась (проверьте поле model в data.js):', err));
 
 // ---------- Клик по полу ----------
 const raycaster = new THREE.Raycaster();

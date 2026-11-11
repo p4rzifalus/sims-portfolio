@@ -1,4 +1,5 @@
-// Персонажи: копия модели робота со своим цветом, анимациями и ходьбой по клеткам.
+// Персонажи: лоу-поли люди Kenney Mini Characters (CC0) со своими анимациями
+// и ходьбой по клеткам. Модель выбирается в data.js (поле model).
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
@@ -6,26 +7,49 @@ import { applyPS1 } from './ps1.js';
 import { FACING_ANGLE } from './room.js';
 import { findPath, nearestFreeCell } from './pathfinding.js';
 
-const MODEL_URL = '/models/RobotExpressive.glb';
-const MODEL_HEIGHT = 4.77; // рост модели в её собственных единицах (измерено)
-const TARGET_HEIGHT = 1.35; // рост персонажа в клетках
-const SCALE = TARGET_HEIGHT / MODEL_HEIGHT;
+const MODELS_DIR = '/models/people/';
+const MODEL_HEIGHT = 0.776; // рост модели в её собственных единицах (измерено)
+const TARGET_HEIGHT = 1.5; // рост персонажа в клетках
+export const SCALE = TARGET_HEIGHT / MODEL_HEIGHT;
 
 // Скорость шага подобрана по самой анимации, чтобы ноги не скользили по полу:
-// в Walking стопа, стоящая на полу, едет назад ~2.9 единицы модели в секунду.
-const WALK_CYCLE_SPEED = 2.9;
-const WALK_TIME_SCALE = 1.4; // ускоряем анимацию — и шаг пропорционально
+// в walk стопа за полцикла (0,33 с) проезжает назад ~0,3 единицы модели.
+const WALK_CYCLE_SPEED = 0.915;
+const WALK_TIME_SCALE = 1.0; // можно ускорить анимацию — шаг ускорится пропорционально
 const WALK_SPEED = WALK_CYCLE_SPEED * SCALE * WALK_TIME_SCALE; // клеток в секунду
 
 const TURN_RATE = 12; // как быстро разворачивается (больше = резче)
 const FADE = 0.25; // длительность плавного перехода между анимациями, секунды
 
-export function loadModel() {
-  return new GLTFLoader().loadAsync(MODEL_URL);
+// Взмах рукой: в наборе такой анимации нет, поэтому правую руку поднимаем кодом
+// поверх текущей анимации.
+const WAVE = { duration: 1.8, raise: -2.8, swing: 0.45, speed: 10, fade: 0.25 };
+const Z_AXIS = new THREE.Vector3(0, 0, 1);
+
+const cache = new Map();
+export function loadModel(name) {
+  if (!cache.has(name)) {
+    cache.set(
+      name,
+      new GLTFLoader().loadAsync(`${MODELS_DIR}${name}.glb`).then((gltf) => {
+        // Текстура-палитра: чёткие пиксели, без размытия.
+        gltf.scene.traverse((o) => {
+          if (o.isMesh && o.material.map) {
+            o.material.map.magFilter = THREE.NearestFilter;
+            o.material.map.minFilter = THREE.NearestFilter;
+            o.material.map.generateMipmaps = false;
+          }
+        });
+        return gltf;
+      }),
+    );
+  }
+  return cache.get(name);
 }
 
 // Привести угол к диапазону от −π до π (чтобы поворачиваться короткой стороной).
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
+const smooth = (x) => x * x * (3 - 2 * x);
 
 export class Character {
   constructor(data, gltf, grid, animNames) {
@@ -37,24 +61,17 @@ export class Character {
     this.root = new THREE.Group();
     this.root.name = data.id;
 
-    // Независимая копия модели (свой скелет) и свои материалы.
+    // Независимая копия модели (свой скелет) и свои материалы с простым освещением.
     const model = SkeletonUtils.clone(gltf.scene);
     model.scale.setScalar(SCALE);
-    const mats = new Map();
     model.traverse((o) => {
       if (!o.isMesh) return;
-      o.material = [o.material].flat().map((m) => {
-        if (!mats.has(m)) {
-          const color = m.name === 'Main' ? new THREE.Color(data.color) : m.color.clone();
-          mats.set(m, new THREE.MeshLambertMaterial({ color, name: m.name }));
-        }
-        return mats.get(m);
-      });
-      if (o.material.length === 1) o.material = o.material[0];
+      o.material = new THREE.MeshLambertMaterial({ map: o.material.map, color: o.material.color.clone() });
       o.userData.characterId = data.id;
     });
     applyPS1(model);
     this.model = model;
+    this.armRight = model.getObjectByName('arm-right');
     this.root.add(model);
 
     // Круглая тень под ногами
@@ -68,17 +85,13 @@ export class Character {
     // Анимации
     this.mixer = new THREE.AnimationMixer(model);
     this.actions = {};
-    const onceClips = new Set([animNames.sit, animNames.stand, animNames.wave]);
     for (const clip of gltf.animations) {
       const action = this.mixer.clipAction(clip);
-      if (onceClips.has(clip.name)) {
-        action.setLoop(THREE.LoopOnce, 1);
-        action.clampWhenFinished = true; // замирает на последнем кадре
-      }
       if (clip.name === animNames.walk) action.timeScale = WALK_TIME_SCALE;
       this.actions[clip.name] = action;
     }
     this.current = null;
+    this.waving = null;
 
     // Положение и поворот на старте
     const [c, r] = data.startCell;
@@ -94,6 +107,7 @@ export class Character {
 
   // Включить анимацию по ключу из data.js (idle, walk, sit…) с плавным переходом.
   play(key, fade = FADE) {
+    if (key === 'wave') return this.wave();
     const action = this.actions[this.anim[key]];
     if (!action || action === this.current) return action;
     action.reset();
@@ -102,6 +116,14 @@ export class Character {
     else if (this.current) this.current.stop();
     this.current = action;
     return action;
+  }
+
+  // Помахать правой рукой. Возвращает обещание, которое выполнится, когда рука опустится.
+  wave() {
+    return new Promise((resolve) => {
+      this.waving?.resolve();
+      this.waving = { t: 0, resolve };
+    });
   }
 
   // Идти в клетку [c, r]. Если она занята — в ближайшую свободную.
@@ -148,6 +170,19 @@ export class Character {
         }
       }
       this.play(this.path.length ? 'walk' : 'idle');
+    }
+
+    // Взмах рукой поверх анимации: плавно поднять, покачать, плавно опустить.
+    if (this.waving) {
+      const w = this.waving;
+      w.t += dt;
+      const k = smooth(Math.max(0, Math.min(1, w.t / WAVE.fade, (WAVE.duration - w.t) / WAVE.fade)));
+      const angle = (WAVE.raise + Math.sin(w.t * WAVE.speed) * WAVE.swing) * k;
+      this.armRight.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(Z_AXIS, angle));
+      if (w.t >= WAVE.duration) {
+        this.waving = null;
+        w.resolve();
+      }
     }
 
     // Плавный поворот лицом по направлению движения
