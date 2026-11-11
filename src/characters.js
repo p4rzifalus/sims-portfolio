@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { applyPS1 } from './ps1.js';
+import { ps1 as ps1Settings } from './data.js';
 import { FACING_ANGLE } from './room.js';
 import { findPath, nearestFreeCell } from './pathfinding.js';
 
@@ -139,7 +140,7 @@ export class Character {
       o.material = new THREE.MeshLambertMaterial({ map: o.material.map, color: o.material.color.clone() });
       o.userData.characterId = data.id;
     });
-    applyPS1(model);
+    applyPS1(model, ps1Settings.characterSnap);
     model.userData.characterId = data.id;
     this.model = model;
     this.armRight = model.getObjectByName('arm-right');

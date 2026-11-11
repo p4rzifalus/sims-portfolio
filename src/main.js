@@ -327,7 +327,8 @@ function frame() {
   updateHover();
   if (selected) hud.setActivity(selected.activity || (selected.isWalking ? { icon: '🚶', label: ui.walking } : null));
 
-  pass.render(renderer, scene, camera, Boolean(hovered));
+  const hoveredIsCharacter = Boolean(hovered?.userData.characterId);
+  pass.render(renderer, scene, camera, Boolean(hovered), hoveredIsCharacter ? ps1.characterSnap : 1);
 
   debug.updateLabels(toScreen);
   requestAnimationFrame(frame);
@@ -335,4 +336,7 @@ function frame() {
 frame();
 
 // Для проверки из консоли браузера.
-window.__app = { scene, camera, grid, debug, setPS1, toScreen, ps1Uniforms, characters, select, pick, occupancy, menu };
+window.__app = {
+  scene, camera, grid, debug, setPS1, toScreen, ps1Uniforms, characters, select, pick, occupancy, menu,
+  renderer, pass, basePos, camRight, camUp, built, loadModel, renderPortrait,
+};

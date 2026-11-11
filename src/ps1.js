@@ -12,35 +12,43 @@ export const ps1Uniforms = {
   uSnapOn: { value: 1 },
 };
 
+// uSnapScale — своя сила для каждого материала: 1 — как у комнаты,
+// 2 — сетка вдвое мельче (дрожит вдвое слабее), 0 — без дрожания.
 const SNAP_CODE = /* glsl */ `
 #include <project_vertex>
-if (uSnapOn > 0.5) {
+if (uSnapOn > 0.5 && uSnapScale > 0.0) {
+  vec2 res = uSnapRes * uSnapScale;
   vec4 snapped = gl_Position;
   snapped.xyz /= snapped.w;
-  snapped.xy = floor(snapped.xy * uSnapRes + 0.5) / uSnapRes;
+  snapped.xy = floor(snapped.xy * res + 0.5) / res;
   snapped.xyz *= snapped.w;
   gl_Position = snapped;
 }
 `;
 
-export function patchMaterial(material) {
+export function patchMaterial(material, scale = 1) {
   if (material.userData.ps1) return;
   material.userData.ps1 = true;
+  material.userData.snapScale = { value: scale };
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uSnapRes = ps1Uniforms.uSnapRes;
     shader.uniforms.uSnapOn = ps1Uniforms.uSnapOn;
+    shader.uniforms.uSnapScale = material.userData.snapScale;
     shader.vertexShader =
-      'uniform vec2 uSnapRes;\nuniform float uSnapOn;\n' +
+      'uniform vec2 uSnapRes;\nuniform float uSnapOn;\nuniform float uSnapScale;\n' +
       shader.vertexShader.replace('#include <project_vertex>', SNAP_CODE);
   };
   material.needsUpdate = true;
 }
 
 // Пройтись по объекту и всем его частям и включить дрожание во всех материалах.
-export function applyPS1(root) {
+// Части с userData.noSnap пропускаем: это пол и то, что лежит на нём плашмя (ковёр).
+// Пол — огромный квадрат из двух треугольников; когда его углы прыгают по сетке,
+// плоскость чуть «наклоняется» и перекрывает ковёр, лежащий на 2 см выше.
+export function applyPS1(root, scale = 1) {
   root.traverse((o) => {
-    if (!o.material) return;
-    (Array.isArray(o.material) ? o.material : [o.material]).forEach(patchMaterial);
+    if (!o.material || o.userData.noSnap) return;
+    (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => patchMaterial(m, scale));
   });
 }
 
@@ -170,11 +178,13 @@ export class PS1Pass {
     }
   }
 
-  render(renderer, scene, camera, outline = false) {
+  // outlineSnap — сила дрожания обводимого объекта, чтобы силуэт совпал с ним.
+  render(renderer, scene, camera, outline = false, outlineSnap = 1) {
     renderer.setRenderTarget(this.target);
     renderer.render(scene, camera);
 
     if (outline) {
+      this.maskMaterial.userData.snapScale.value = outlineSnap;
       // Второй кадр: только объект под курсором, белым по чёрному.
       const { background, fog } = scene;
       const layers = camera.layers.mask;

@@ -176,6 +176,7 @@ const builders = {
     plane.rotation.x = -Math.PI / 2;
     // Чуть выше пола, иначе пол и ковёр «спорят», кто ближе к камере, и ковёр мигает.
     plane.position.y = 0.02;
+    plane.userData.noSnap = true;
     const g = new THREE.Group();
     g.add(plane);
     return g;
@@ -232,6 +233,7 @@ export function buildRoom(room, furniture) {
   const floor = new THREE.Mesh(new THREE.BoxGeometry(C, SLAB, R), [m.slab, m.slab, m.floor, m.slab, m.slab, m.slab]);
   floor.position.set(C / 2, -SLAB / 2, R / 2);
   floor.userData.isFloor = true;
+  floor.userData.noSnap = true; // без дрожания, иначе перекрывает ковёр (см. ps1.js)
   group.add(floor);
 
   // Стены. Порядок граней коробки: +X, −X, +Y (верх), −Y, +Z, −Z.
