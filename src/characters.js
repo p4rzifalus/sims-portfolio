@@ -8,7 +8,7 @@ import { ps1 as ps1Settings } from './data.js';
 import { FACING_ANGLE } from './room.js';
 import { findPath, nearestFreeCell } from './pathfinding.js';
 
-const MODELS_DIR = '/models/people/';
+const MODELS_DIR = `${import.meta.env.BASE_URL}models/people/`; // работает и в подпапке сайта
 const MODEL_HEIGHT = 0.776; // рост модели в её собственных единицах (измерено)
 const TARGET_HEIGHT = 1.5; // рост персонажа в клетках
 export const SCALE = TARGET_HEIGHT / MODEL_HEIGHT;

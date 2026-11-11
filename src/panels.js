@@ -74,7 +74,8 @@ export function createPanels(root, { panels: panelTexts, ui: texts, getPortrait 
   }
 
   window.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closeCurrent();
+    // Если открыто радиальное меню, Esc закрывает только его (см. main.js).
+    if (e.key === 'Escape' && !document.querySelector('.radial-overlay')) closeCurrent();
   });
 
   return {

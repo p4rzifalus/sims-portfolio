@@ -28,7 +28,8 @@ const CAMERA_DISTANCE = 20;
 const SCREEN_MARGINS = { left: 0.11, right: 0.04, top: 0.05, bottom: 0.24 };
 
 // ---------- Рендерер ----------
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+// Сглаживание краёв делает сам проход PS1Pass (в режиме без PS1), поэтому здесь оно не нужно.
+const renderer = new THREE.WebGLRenderer({ antialias: false });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 document.getElementById('app').appendChild(renderer.domElement);
 
@@ -48,7 +49,7 @@ sun.position.set(8, 10, 6);
 scene.add(sun);
 
 // ---------- Камера ----------
-// Ближняя и дальняя границы — поуже: так точнее понятно, что ближе к камере (ковёр не мигает).
+// Ближняя и дальняя границы с запасом вокруг комнаты (камера в 20 клетках от центра).
 const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 4, 40);
 const target = new THREE.Vector3(room.columns / 2, 0.8, room.rows / 2);
 const el = THREE.MathUtils.degToRad(CAMERA_ELEVATION);
@@ -237,6 +238,7 @@ canvas.addEventListener('pointermove', (e) => {
   mouse.inside = true;
 });
 canvas.addEventListener('pointerleave', () => (mouse.inside = false));
+canvas.addEventListener('contextmenu', (e) => e.preventDefault()); // правый клик не открывает меню браузера
 
 let hovered = null; // объект, который сейчас обведён
 function updateHover() {
@@ -335,8 +337,13 @@ function frame() {
 }
 frame();
 
-// Для проверки из консоли браузера.
-window.__app = {
-  scene, camera, grid, debug, setPS1, toScreen, ps1Uniforms, characters, select, pick, occupancy, menu,
-  renderer, pass, basePos, camRight, camUp, built, loadModel, renderPortrait,
-};
+// Только при разработке (npm run dev): доступ ко всему из консоли браузера для проверок.
+if (import.meta.env.DEV) {
+  window.__app = {
+    scene, camera, grid, debug, setPS1, toScreen, ps1Uniforms, characters, select, pick, occupancy, menu,
+    renderer, pass, basePos, camRight, camUp, built, loadModel, renderPortrait,
+    get selected() {
+      return selected;
+    },
+  };
+}
