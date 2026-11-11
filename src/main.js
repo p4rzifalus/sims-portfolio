@@ -1,12 +1,24 @@
 // Точка входа: собирает сцену, камеру, PS1-эффект и запускает отрисовку.
 import * as THREE from 'three';
-import { room, furniture, ps1, ui, characters as characterData, animations } from './data.js';
+import {
+  room,
+  furniture,
+  ps1,
+  ui,
+  characters as characterData,
+  animations,
+  characterActions,
+  panels as panelTexts,
+} from './data.js';
 import { buildRoom } from './room.js';
 import { createGrid, createDebugOverlay } from './grid.js';
 import { applyPS1, ps1Uniforms, PS1Pass, setOutlined } from './ps1.js';
 import { loadModel, Character, createSelectionRing } from './characters.js';
 import { renderPortrait } from './portraits.js';
 import { createUI } from './ui.js';
+import { createRadialMenu } from './menu.js';
+import { createPanels } from './panels.js';
+import { performAction } from './actions.js';
 
 // ---------- Настройки вида (не контент, поэтому здесь, а не в data.js) ----------
 const CAMERA_ELEVATION = 30; // наклон камеры, градусы (0 — сбоку, 90 — сверху)
@@ -36,7 +48,8 @@ sun.position.set(8, 10, 6);
 scene.add(sun);
 
 // ---------- Камера ----------
-const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 100);
+// Ближняя и дальняя границы — поуже: так точнее понятно, что ближе к камере (ковёр не мигает).
+const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 4, 40);
 const target = new THREE.Vector3(room.columns / 2, 0.8, room.rows / 2);
 const el = THREE.MathUtils.degToRad(CAMERA_ELEVATION);
 const az = THREE.MathUtils.degToRad(CAMERA_AZIMUTH);
@@ -145,12 +158,32 @@ const characters = [];
 let selected = null; // кем сейчас управляем
 const ring = createSelectionRing();
 
+const portraits = {}; // id персонажа → картинка портрета
+const occupancy = new Map(); // занятые места: 'chair' → персонаж
+
 const hud = createUI({
   characters: characterData,
   texts: ui,
   onSelect: (id) => select(id),
-  onCancel: () => selected?.stop(),
+  onCancel: () => {
+    if (!selected) return;
+    if (selected.task) selected.cancelTask();
+    else if (selected.isWalking) selected.stop();
+  },
 });
+const uiRoot = document.getElementById('ui');
+const menu = createRadialMenu(uiRoot, ui);
+const panels = createPanels(uiRoot, { panels: panelTexts, ui, getPortrait: (id) => portraits[id] });
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') menu.close();
+});
+
+// Куда «смотрит зритель»: к нему персонаж поворачивается, чтобы помахать.
+const cameraYaw = Math.atan2(camDir.x, camDir.z);
+
+function startAction(actor, action, extra) {
+  performAction({ actor, action, furniture, occupancy, panels, cameraYaw, ...extra });
+}
 
 function select(id) {
   const ch = characters.find((c) => c.id === id);
@@ -167,7 +200,8 @@ Promise.all(characterData.map((data) => loadModel(data.model)))
       const ch = new Character(data, models[i], grid, animations);
       characters.push(ch);
       scene.add(ch.root);
-      hud.setPortrait(data.id, renderPortrait(renderer, models[i]));
+      portraits[data.id] = renderPortrait(renderer, models[i]);
+      hud.setPortrait(data.id, portraits[data.id]);
     });
     select(characters[0].id);
   })
@@ -206,6 +240,7 @@ canvas.addEventListener('pointerleave', () => (mouse.inside = false));
 
 let hovered = null; // объект, который сейчас обведён
 function updateHover() {
+  if (menu.isOpen) return; // пока открыто меню, обведён предмет, для которого оно открыто
   const target = mouse.inside ? pick(mouse.x, mouse.y) : null;
   const obj = target && target.type !== 'floor' ? target.object : null;
   if (obj === hovered) return;
@@ -215,19 +250,58 @@ function updateHover() {
   canvas.style.cursor = obj ? 'pointer' : 'default';
 }
 
+// Открыть радиальное меню у курсора.
+function openMenu(e, items, onPick) {
+  menu.open({
+    x: e.clientX,
+    y: e.clientY,
+    portrait: portraits[selected.id],
+    accent: selected.data.color,
+    items,
+    onPick,
+    onClose: () => updateHover(),
+  });
+}
+
 canvas.addEventListener('pointerdown', (e) => {
   if (e.button !== 0 || !selected) return;
   const target = pick(e.clientX, e.clientY);
   if (!target) return;
+
+  // Персонаж: чужой — выбрать; уже выбранный — меню «Помахать / О себе».
   if (target.type === 'character') {
-    select(target.character.id);
+    const ch = target.character;
+    if (ch !== selected) {
+      select(ch.id);
+      return;
+    }
+    openMenu(e, characterActions, (action) => {
+      const actor = action.who === 'target' ? ch : selected;
+      startAction(actor, action, { target: ch });
+    });
     return;
   }
-  // Пол, мебель, стена (и пока что интерактивные предметы — меню будет на этапе 4):
-  // идём в клетку под точкой клика.
+
+  // Интерактивный предмет: меню его действий. Занятое место — «Занято».
+  if (target.type === 'object') {
+    const item = furniture.find((f) => f.id === target.id);
+    const actor = selected;
+    const items = item.actions.map((a) => {
+      const key = a.occupies ? a.sitOn || item.id : null;
+      const holder = key && occupancy.get(key);
+      return { ...a, disabled: Boolean(holder && holder !== actor) };
+    });
+    openMenu(e, items, (action) => startAction(actor, action, { item }));
+    return;
+  }
+
+  // Пол, мебель, стена: идём в клетку под точкой клика.
+  // Если персонаж чем-то занят — сначала прерываем (он встанет), потом идёт.
   const c = THREE.MathUtils.clamp(Math.floor(target.point.x), 0, room.columns - 1);
   const r = THREE.MathUtils.clamp(Math.floor(target.point.z), 0, room.rows - 1);
-  selected.walkTo(c, r);
+  const actor = selected;
+  if (actor.task) actor.cancelTask().then(() => actor.walkTo(c, r));
+  else actor.walkTo(c, r);
 });
 
 // ---------- Цикл отрисовки ----------
@@ -249,8 +323,9 @@ function frame() {
   camera.updateMatrixWorld();
 
   ring.update(t);
+  if (selected) ring.followFloor(selected.position.y);
   updateHover();
-  if (selected) hud.setActivity(selected.isWalking ? { icon: '🚶', label: ui.walking } : null);
+  if (selected) hud.setActivity(selected.activity || (selected.isWalking ? { icon: '🚶', label: ui.walking } : null));
 
   pass.render(renderer, scene, camera, Boolean(hovered));
 
@@ -260,4 +335,4 @@ function frame() {
 frame();
 
 // Для проверки из консоли браузера.
-window.__app = { scene, camera, grid, debug, setPS1, toScreen, ps1Uniforms, characters, select, pick };
+window.__app = { scene, camera, grid, debug, setPS1, toScreen, ps1Uniforms, characters, select, pick, occupancy, menu };

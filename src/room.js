@@ -28,6 +28,35 @@ function cylinder(rTop, rBottom, h, mat, x = 0, y = 0, z = 0, segments = 8) {
   return m;
 }
 
+// На что можно сесть: высота сиденья, насколько оно сдвинуто вперёд от центра клетки
+// и откуда к нему подходить (approach: минус — сзади, как к стулу у стола;
+// плюс — спереди, как к дивану у стены). Должно совпадать с размерами в builders ниже.
+const SEATS = {
+  chair: { height: 0.49, forward: 0.12, approach: -0.45 },
+  sofa: { height: 0.46, forward: 0.055, approach: 0.55 },
+};
+
+// Точка посадки на предмет: { position, approach, yaw }. Для длинных предметов (диван)
+// берётся клетка, ближайшая к nearCell — туда, откуда персонаж подошёл.
+export function seatPoint(item, nearCell) {
+  const seat = SEATS[item.type];
+  if (!seat) return null;
+  let cell = item.cells[0];
+  if (nearCell && item.cells.length > 1) {
+    const d = (c) => Math.hypot(c[0] - nearCell[0], c[1] - nearCell[1]);
+    cell = item.cells.reduce((a, b) => (d(b) < d(a) ? b : a));
+  }
+  const yaw = FACING_ANGLE[item.facing || 'south'];
+  const fx = Math.sin(yaw), fz = Math.cos(yaw);
+  const x = cell[0] + 0.5 + fx * seat.forward;
+  const z = cell[1] + 0.5 + fz * seat.forward;
+  return {
+    position: new THREE.Vector3(x, seat.height, z),
+    approach: new THREE.Vector3(x + fx * seat.approach, 0, z + fz * seat.approach),
+    yaw,
+  };
+}
+
 // Прямоугольник клеток, которые занимает предмет.
 export function footprint(cells) {
   const cs = cells.map((c) => c[0]);
@@ -145,7 +174,8 @@ const builders = {
   rug({ w, d }, m) {
     const plane = new THREE.Mesh(new THREE.PlaneGeometry(w * 0.92, d * 0.88), m.rug);
     plane.rotation.x = -Math.PI / 2;
-    plane.position.y = 0.006;
+    // Чуть выше пола, иначе пол и ковёр «спорят», кто ближе к камере, и ковёр мигает.
+    plane.position.y = 0.02;
     const g = new THREE.Group();
     g.add(plane);
     return g;

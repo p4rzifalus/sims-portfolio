@@ -26,6 +26,37 @@ const FADE = 0.25; // длительность плавного перехода
 const WAVE = { duration: 1.8, raise: -2.8, swing: 0.45, speed: 10, fade: 0.25 };
 const Z_AXIS = new THREE.Vector3(0, 0, 1);
 
+// Посадка: в позе sit модель опускается, поэтому на сиденье её надо приподнять.
+const SIT_LIFT = 0.02; // насколько выше сиденья точка персонажа (подобрано на глаз)
+const SIT_BACK = -0.06; // сдвиг назад к спинке (минус — вперёд, чтобы спинка стула не тонула в спине)
+const SHADOW_Y = 0.035; // тень всегда на полу, чуть выше ковра
+const SIT_TIME = 0.4; // сколько длится «сесть» и «встать», секунды
+
+// Сигнал «действие отменили».
+export class Cancelled extends Error {}
+
+class Task {
+  constructor() {
+    this.cancelled = false;
+    this.cleanups = [];
+    this.signal = new Promise((_, reject) => (this.reject = reject));
+    this.signal.catch(() => {});
+  }
+  // Дождаться шага. Если задачу отменят раньше — сразу выйти с Cancelled.
+  step(promise) {
+    return Promise.race([promise, this.signal]);
+  }
+  // Что сделать при завершении или отмене (выполняется в обратном порядке).
+  onCleanup(fn) {
+    this.cleanups.push(fn);
+  }
+  cancel() {
+    if (this.cancelled) return;
+    this.cancelled = true;
+    this.reject(new Cancelled());
+  }
+}
+
 const cache = new Map();
 export function loadModel(name) {
   if (!cache.has(name)) {
@@ -62,11 +93,16 @@ export function createSelectionRing() {
     return m;
   };
   const halo = make(0.3, 0.6, 0.35, 0); // мягкое свечение вокруг
-  const core = make(0.4, 0.5, 1, 0.002); // яркое кольцо
-  const edge = make(0.37, 0.4, 1, 0.003); // тонкий белый ободок внутри
-  group.position.y = 0.02;
+  const core = make(0.4, 0.5, 1, 0.008); // яркое кольцо
+  const edge = make(0.37, 0.4, 1, 0.012); // тонкий белый ободок внутри
+  const RING_Y = 0.05; // выше ковра и тени
+  group.position.y = RING_Y;
   return {
     group,
+    // Держать кольцо на полу, даже когда персонаж сидит (поднят над полом).
+    followFloor(characterY) {
+      group.position.y = RING_Y - characterY;
+    },
     setColor(hex) {
       const c = new THREE.Color(hex);
       core.material.color.copy(c).lerp(new THREE.Color('#ffffff'), 0.25);
@@ -114,9 +150,10 @@ export class Character {
       new THREE.CircleGeometry(0.32, 10).rotateX(-Math.PI / 2),
       new THREE.MeshBasicMaterial({ color: '#000000', transparent: true, opacity: 0.35, depthWrite: false }),
     );
-    shadow.position.y = 0.012;
+    shadow.position.y = SHADOW_Y; // выше ковра (0.02)
     shadow.userData.noOutline = true;
     shadow.raycast = () => {}; // тень не ловит клики
+    this.shadow = shadow;
     this.root.add(shadow);
 
     // Анимации
@@ -129,6 +166,13 @@ export class Character {
     }
     this.current = null;
     this.waving = null;
+    this.waiters = []; // кто ждёт каких условий (см. until)
+    this.clock = 0; // собственные часы персонажа, секунды
+    this.tween = null; // плавное перемещение (сесть/встать)
+    this.standSpot = null; // где стоял до того, как сел
+    this.task = null; // текущее действие
+    this.taskGen = 0;
+    this.activity = null; // { icon, label } для нижней панели
 
     // Положение и поворот на старте
     const [c, r] = data.startCell;
@@ -189,8 +233,135 @@ export class Character {
     this.play('idle');
   }
 
+  // ---------- Шаги, которых можно дождаться ----------
+
+  // Обещание, которое выполнится, когда условие станет истинным (проверяется каждый кадр).
+  until(predicate) {
+    if (predicate()) return Promise.resolve();
+    return new Promise((resolve) => this.waiters.push({ predicate, resolve }));
+  }
+
+  // Подождать столько-то секунд «игрового» времени.
+  wait(seconds) {
+    const end = this.clock + seconds;
+    return this.until(() => this.clock >= end);
+  }
+
+  // Дойти до клетки; обещание выполнится по прибытии.
+  walkToAsync(c, r) {
+    if (!this.walkTo(c, r)) return Promise.reject(new Error(`не удалось построить путь в клетку ${c},${r}`));
+    return this.until(() => !this.isWalking);
+  }
+
+  // Повернуться на угол (в радианах) и дождаться конца поворота.
+  faceTo(yaw) {
+    this.targetYaw = yaw;
+    return this.until(() => Math.abs(wrap(this.targetYaw - this.root.rotation.y)) < 0.03);
+  }
+
+  // Переместиться в точку за duration секунд. eased = true — плавно разогнаться
+  // и затормозить (сесть/встать); false — равномерно (короткий шаг пешком).
+  tweenTo(to, duration, eased = true) {
+    return new Promise((resolve) => {
+      this.tween?.resolve();
+      this.tween = { from: this.root.position.clone(), to: to.clone(), t: 0, duration, eased, resolve };
+    });
+  }
+
+  // Сесть: seat = { position, approach, yaw } — точка на сиденье, откуда подходить
+  // (сзади стула / перед диваном) и куда смотреть сидя.
+  async sitDown(seat) {
+    this.standSpot = seat.approach.clone(); // сюда вернёмся, когда встанем
+    // Подойти вплотную к месту посадки
+    const pos = this.root.position;
+    const dx = seat.approach.x - pos.x, dz = seat.approach.z - pos.z;
+    const dist = Math.hypot(dx, dz);
+    if (dist > 0.02) {
+      this.targetYaw = Math.atan2(dx, dz);
+      this.play('walk');
+      await this.tweenTo(seat.approach, dist / WALK_SPEED, false);
+    }
+    // Повернуться и опуститься на сиденье
+    this.targetYaw = seat.yaw;
+    this.play('sit', 0.3);
+    const to = seat.position.clone();
+    to.y += SIT_LIFT;
+    to.x -= Math.sin(seat.yaw) * SIT_BACK;
+    to.z -= Math.cos(seat.yaw) * SIT_BACK;
+    await this.tweenTo(to, SIT_TIME);
+  }
+
+  // Встать (своей анимации «встать» в наборе нет — плавный переход sit → idle).
+  async standUp() {
+    if (!this.standSpot) return;
+    this.play('idle', 0.35);
+    await this.tweenTo(this.standSpot, SIT_TIME);
+    this.standSpot = null;
+  }
+
+  stopWave() {
+    if (!this.waving) return;
+    this.waving.resolve();
+    this.waving = null;
+  }
+
+  // ---------- Действия (задачи) ----------
+  // Задача — цепочка шагов (дойти → повернуться → сесть → панель…).
+  // Её можно отменить на любом шаге; тогда выполняются «уборки» в обратном порядке:
+  // закрыть панель, встать, остановиться, освободить место.
+  async runTask(activity, steps) {
+    const gen = ++this.taskGen;
+    await this.cancelTask();
+    if (gen !== this.taskGen) return; // пока ждали, запустили другую задачу
+    const task = new Task();
+    this.task = task;
+    this.activity = activity;
+    task.done = (async () => {
+      try {
+        await steps(task);
+      } catch (e) {
+        if (!(e instanceof Cancelled)) console.warn('Действие прервано:', e.message);
+      } finally {
+        for (const cleanup of task.cleanups.reverse()) {
+          try {
+            await cleanup();
+          } catch (e) {
+            console.error(e);
+          }
+        }
+        if (this.task === task) {
+          this.task = null;
+          this.activity = null;
+        }
+      }
+    })();
+    return task.done;
+  }
+
+  // Отменить текущую задачу и дождаться, пока персонаж «приберётся» (встанет и т. п.).
+  cancelTask() {
+    const t = this.task;
+    if (!t) return Promise.resolve();
+    t.cancel();
+    return t.done;
+  }
+
   update(dt) {
+    this.clock += dt;
     this.mixer.update(dt);
+
+    if (this.tween) {
+      const tw = this.tween;
+      tw.t += dt;
+      const linear = Math.min(1, tw.t / tw.duration);
+      const k = tw.eased ? smooth(linear) : linear;
+      this.root.position.lerpVectors(tw.from, tw.to, k);
+      if (k >= 1) {
+        this.tween = null;
+        tw.resolve();
+      }
+    }
+    this.shadow.position.y = SHADOW_Y - this.root.position.y; // сидя тень остаётся на полу
 
     if (this.path.length) {
       const pos = this.root.position;
@@ -230,5 +401,14 @@ export class Character {
     // Плавный поворот лицом по направлению движения
     const diff = wrap(this.targetYaw - this.root.rotation.y);
     this.root.rotation.y += diff * Math.min(1, TURN_RATE * dt);
+
+    // Проверить, не дождался ли кто-нибудь своего условия
+    if (this.waiters.length) {
+      this.waiters = this.waiters.filter((w) => {
+        if (!w.predicate()) return true;
+        w.resolve();
+        return false;
+      });
+    }
   }
 }

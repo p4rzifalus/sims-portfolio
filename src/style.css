@@ -274,6 +274,244 @@ body {
   box-shadow: 0 2px 0 rgba(31, 47, 110, 0.25);
 }
 
+/* ---------- Радиальное меню ---------- */
+.radial-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+}
+.radial {
+  --accent: #fff;
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+.radial-center {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 60px;
+  height: 60px;
+  translate: -50% -50%;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 3px var(--accent), 0 4px 10px rgba(0, 0, 0, 0.45);
+  background: radial-gradient(circle at 50% 35%, #e3edff, #7b98e0 70%);
+  animation: radial-pop 0.18s ease-out both;
+}
+.radial-dot {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, #b9ccf6, var(--ui-blue));
+  border: 2px solid #dfe8ff;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.35);
+  animation: radial-pop 0.2s ease-out both;
+}
+.radial-pill {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  font: inherit;
+  font-size: 14px;
+  font-weight: bold;
+  color: #fff;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 2px solid #c9d8ff;
+  background: linear-gradient(180deg, #6f8fe0 0%, var(--ui-blue) 50%, var(--ui-blue-dark) 100%);
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+  animation: radial-pop 0.2s ease-out both;
+}
+.radial-pill:hover {
+  background: linear-gradient(180deg, #8eaaf0 0%, #5878cf 50%, #2c4596 100%);
+  border-color: #fff;
+}
+.radial-pill.disabled {
+  cursor: not-allowed;
+  color: #c9cbd6;
+  background: linear-gradient(180deg, #8b8d9c 0%, #5f6172 50%, #44465a 100%);
+  border-color: #a9abba;
+}
+.radial-busy {
+  font-size: 11px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: #d8413a;
+  color: #fff;
+}
+.radial.measuring * {
+  animation: none !important;
+}
+@keyframes radial-pop {
+  from {
+    opacity: 0;
+    scale: 0.4;
+  }
+  to {
+    opacity: 1;
+    scale: 1;
+  }
+}
+
+/* ---------- Панели: работы, ссылки, о себе ---------- */
+.panel {
+  --accent: #fff;
+  /* Слева, рядом с портретами: компьютер и сидящий за ним персонаж остаются видны. */
+  position: absolute;
+  z-index: 15;
+  top: 14px;
+  left: 120px;
+  width: min(480px, 44vw);
+  max-height: calc(100vh - 200px);
+  display: flex;
+  flex-direction: column;
+  border-radius: 26px;
+  overflow: hidden;
+  background: linear-gradient(180deg, #e9f0ff, #c3d4f7);
+  color: #1f2f6e;
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 4px var(--ui-blue), 0 10px 30px rgba(0, 0, 0, 0.5);
+  animation: panel-in 0.22s ease-out both;
+}
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    scale: 0.92;
+  }
+}
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px 12px 20px;
+  color: #fff;
+  background: linear-gradient(180deg, #6f8fe0, var(--ui-blue-dark));
+  border-bottom: 3px solid var(--accent);
+}
+.panel-title {
+  font-size: 18px;
+  font-weight: bold;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.35);
+}
+.panel-x {
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background: #d8413a;
+  color: #fff;
+  font: bold 13px/1 system-ui, sans-serif;
+  cursor: pointer;
+}
+.panel-body {
+  padding: 16px 20px;
+  overflow: auto;
+}
+.panel-foot {
+  display: flex;
+  justify-content: flex-end;
+  padding: 10px 16px 14px;
+}
+.works-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 14px;
+}
+.work-card {
+  display: block;
+  padding: 8px;
+  border-radius: 16px;
+  background: #fff;
+  color: inherit;
+  text-decoration: none;
+  box-shadow: 0 3px 0 rgba(31, 47, 110, 0.2);
+  transition: transform 0.12s;
+}
+a.work-card:hover {
+  transform: translateY(-2px);
+}
+.work-thumb {
+  aspect-ratio: 4 / 3;
+  border-radius: 10px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background: repeating-linear-gradient(45deg, var(--accent) 0 10px, color-mix(in srgb, var(--accent) 75%, #fff) 10px 20px);
+}
+.work-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  image-rendering: auto;
+}
+.work-number {
+  font-size: 28px;
+  font-weight: bold;
+  color: #fff;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.3);
+}
+.work-title {
+  margin-top: 8px;
+  font-weight: bold;
+  font-size: 14px;
+}
+.work-desc {
+  font-size: 12px;
+  opacity: 0.75;
+}
+.links-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.link-pill {
+  display: block;
+  padding: 10px 18px;
+  border-radius: 999px;
+  font-weight: bold;
+  text-decoration: none;
+  color: #fff;
+  background: linear-gradient(180deg, #6f8fe0 0%, var(--ui-blue) 50%, var(--ui-blue-dark) 100%);
+  border: 2px solid #c9d8ff;
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.3);
+}
+.link-pill:hover {
+  filter: brightness(1.15);
+}
+.link-pill::after {
+  content: ' ↗';
+}
+.about {
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+}
+.about-portrait {
+  width: 96px;
+  height: 96px;
+  flex: none;
+  border-radius: 22px;
+  overflow: hidden;
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 3px var(--accent);
+  background: radial-gradient(circle at 50% 35%, #e3edff, #7b98e0 70%);
+}
+.about-text {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
 /* ---------- Отладка ---------- */
 #debug-labels {
   position: fixed;
