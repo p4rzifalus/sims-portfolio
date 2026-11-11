@@ -55,7 +55,13 @@ export function createDebugOverlay(grid, labelsRoot) {
   }
 
   // Маршрут (заполнится на этапе 2)
-  const pathLine = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: '#40ff90', ...onTop }));
+  // Место под точки выделяем один раз с запасом (маршрут не длиннее числа клеток + 1).
+  const maxPoints = grid.columns * grid.rows + 1;
+  const pathGeo = new THREE.BufferGeometry();
+  pathGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(maxPoints * 3), 3));
+  pathGeo.setDrawRange(0, 0);
+  const pathLine = new THREE.Line(pathGeo, new THREE.LineBasicMaterial({ color: '#40ff90', ...onTop }));
+  pathLine.frustumCulled = false;
   pathLine.renderOrder = 11;
   group.add(pathLine);
 
@@ -85,7 +91,11 @@ export function createDebugOverlay(grid, labelsRoot) {
     },
     // points — массив Vector3 (центры клеток маршрута)
     setPath(points) {
-      pathLine.geometry.setFromPoints(points.map((p) => new THREE.Vector3(p.x, y + 0.01, p.z)));
+      const attr = pathGeo.attributes.position;
+      const n = Math.min(points.length, maxPoints);
+      for (let i = 0; i < n; i++) attr.setXYZ(i, points[i].x, y + 0.01, points[i].z);
+      attr.needsUpdate = true;
+      pathGeo.setDrawRange(0, n);
     },
     // Поставить HTML-подписи над центрами клеток. toScreen(vec3) → {x, y} в CSS-пикселях.
     updateLabels(toScreen) {

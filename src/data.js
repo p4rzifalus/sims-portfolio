@@ -56,7 +56,7 @@ export const characters = [
     id: 'p1',
     name: 'Персонаж 1',
     color: '#e8833a', // цвет корпуса робота
-    startCell: [3, 3], // где стоит при открытии сайта
+    startCell: [2, 3], // где стоит при открытии сайта (номера клеток видны по клавише G)
     startFacing: 'south',
     traits: [
       { icon: '🎨', label: 'Дизайнер' },
@@ -84,8 +84,8 @@ export const characters = [
     id: 'p2',
     name: 'Персонаж 2',
     color: '#4aa3c7',
-    startCell: [4, 4],
-    startFacing: 'west',
+    startCell: [4, 2],
+    startFacing: 'south',
     traits: [
       { icon: '💻', label: 'Разработчик' },
       { icon: '🎧', label: 'Меломан' },

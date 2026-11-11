@@ -1,9 +1,10 @@
 // Точка входа: собирает сцену, камеру, PS1-эффект и запускает отрисовку.
 import * as THREE from 'three';
-import { room, furniture, ps1, ui } from './data.js';
+import { room, furniture, ps1, ui, characters as characterData, animations } from './data.js';
 import { buildRoom } from './room.js';
 import { createGrid, createDebugOverlay } from './grid.js';
 import { applyPS1, ps1Uniforms, PS1Pass } from './ps1.js';
+import { loadModel, Character } from './characters.js';
 
 // ---------- Настройки вида (не контент, поэтому здесь, а не в data.js) ----------
 const CAMERA_ELEVATION = 30; // наклон камеры, градусы (0 — сбоку, 90 — сверху)
@@ -141,9 +142,52 @@ window.addEventListener('keydown', (e) => {
 window.addEventListener('resize', resize);
 setPS1(ps1On);
 
+// ---------- Персонажи ----------
+const characters = [];
+let selected = null; // кем сейчас управляем (выбор появится на этапе 3)
+
+loadModel()
+  .then((gltf) => {
+    for (const data of characterData) {
+      const ch = new Character(data, gltf, grid, animations);
+      characters.push(ch);
+      scene.add(ch.root);
+    }
+    selected = characters[0];
+  })
+  .catch((err) => console.error('Модель персонажа не загрузилась:', err));
+
+// ---------- Клик по полу ----------
+const raycaster = new THREE.Raycaster();
+const ndc = new THREE.Vector2();
+
+// Координаты мыши → точка в 3D, куда указывает курсор.
+function pick(clientX, clientY, objects) {
+  ndc.set((clientX / view.width) * 2 - 1, ((window.innerHeight - clientY) / view.height) * 2 - 1);
+  raycaster.setFromCamera(ndc, camera);
+  return raycaster.intersectObjects(objects, true)[0] || null;
+}
+
+renderer.domElement.addEventListener('pointerdown', (e) => {
+  if (e.button !== 0 || !selected) return;
+  const hit = pick(e.clientX, e.clientY, [built.group]);
+  if (!hit) return;
+  // Куда бы ни попал клик (пол, мебель, стена) — берём клетку под этой точкой.
+  const c = THREE.MathUtils.clamp(Math.floor(hit.point.x), 0, room.columns - 1);
+  const r = THREE.MathUtils.clamp(Math.floor(hit.point.z), 0, room.rows - 1);
+  selected.walkTo(c, r);
+});
+
 // ---------- Цикл отрисовки ----------
+let last = performance.now();
 function frame() {
-  const t = performance.now() / 1000; // секунды с открытия страницы
+  const now = performance.now();
+  const dt = Math.min(0.1, (now - last) / 1000); // не больше 0.1 с, если вкладка «спала»
+  last = now;
+  const t = now / 1000; // секунды с открытия страницы
+
+  for (const ch of characters) ch.update(dt);
+  if (debug.visible && selected) debug.setPath([selected.position, ...selected.path]);
   camera.position.copy(basePos);
   if (ps1.cameraSway) {
     // Едва заметное покачивание: из-за него видно, как «дрожат» вершины.
@@ -161,4 +205,4 @@ function frame() {
 frame();
 
 // Для проверки из консоли браузера.
-window.__app = { scene, camera, grid, debug, setPS1, toScreen, ps1Uniforms };
+window.__app = { scene, camera, grid, debug, setPS1, toScreen, ps1Uniforms, characters };
