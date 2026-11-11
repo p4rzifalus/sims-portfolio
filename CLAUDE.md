@@ -6,6 +6,12 @@
 
 Владелец — дизайнер без опыта разработки. Объясняй простыми словами, без жаргона. После каждого этапа сам проверяй в браузере, показывай скриншоты, делай коммит и останавливайся.
 
+## Публикация
+
+- Репозиторий: https://github.com/p4rzifalus/sims-portfolio (публичный). Сайт: https://p4rzifalus.github.io/sims-portfolio/
+- `.github/workflows/deploy.yml`: при push в `main` — `npm ci`, `npm run build`, публикация `dist` на GitHub Pages (Pages включены в режиме «из Actions»).
+- Папка `reference/` (скриншоты из The Sims) — только локально, в `.gitignore`; из истории git удалена перед первой публикацией. Не добавлять обратно.
+
 ## Стек
 
 - Vite + обычный JavaScript + Three.js. Без React и игровых движков.
