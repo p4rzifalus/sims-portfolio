@@ -23,6 +23,7 @@
 
 Kenney Mini Characters (CC0, kenney.nl/assets/mini-characters). Скачаны с копии на GitHub (`ivanlarios22/Zapopan`, совпадает побайтно с `Jolomolokolo/Trackenomics`). Лежат в `public/models/people/`: 12 файлов `character-{female|male}-{a…f}.glb` + общая текстура-палитра `Textures/colormap.png` (на неё ссылаются все glb). Модель выбирается полем `model` у персонажа в `data.js`, цвет `color` — только акцент интерфейса (модели не перекрашиваем).
 
+- `character-female-a.glb` изменён: у неё в руках были костыли (8 отдельных кусков геометрии на костях рук, по 32/36/40/56 вершин). Их треугольники схлопнуты в точку скриптом `tools/remove-hand-props.mjs` (файл того же размера, остальное не тронуто; после правки руки заканчиваются на x = 0.38, как у male-a). Оригинал — в истории git.
 - Скелет: `root`, `torso`, `leg-left/right`, `arm-left/right`, `head`. Модель смотрит на +Z. Рост 0.776 ед. модели, масштаб `SCALE` = 1.5 / 0.776.
 - Анимации (32): static, idle, walk, sprint, jump, fall, crouch, sit, drive, die, pick-up, emote-yes, emote-no, holding-*, attack-*, interact-right/left, wheelchair-*.
 - Нет «помахать» и «встать». Взмах — кодом (`Character.wave()`: поворот `arm-right` вокруг локальной Z поверх анимации). Вставание — crossfade sit → idle (сделать на этапе 4).

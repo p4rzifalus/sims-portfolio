@@ -69,7 +69,7 @@ npm run dev
 
 **`style.css` — оформление интерфейса**: цвета, скругления, анимации появления.
 
-**`public/models/people/` — модели людей.** Это 12 персонажей из набора [Kenney Mini Characters](https://kenney.nl/assets/mini-characters) с лицензией CC0: можно использовать где угодно, указывать автора не обязательно. Все модели используют одну общую текстуру-палитру из `Textures/colormap.png`.
+**`public/models/people/` — модели людей.** Это 12 персонажей из набора [Kenney Mini Characters](https://kenney.nl/assets/mini-characters) с лицензией CC0: можно использовать где угодно, указывать автора не обязательно. Все модели используют одну общую текстуру-палитру из `Textures/colormap.png`. У `character-female-a` из рук убраны костыли — это сделал скрипт `tools/remove-hand-props.mjs`.
 
 ## Как поменять контент
 
