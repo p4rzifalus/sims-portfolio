@@ -148,31 +148,35 @@ export function sky() {
 }
 
 // Экран компьютера: строчки «кода».
-export function screen() {
+// W, H — размер в пикселях (у широкого экрана ноутбука — 60×25).
+export function screen(W = 32, H = 32) {
   const rnd0 = random(71);
-  const lines = Array.from({ length: 10 }, () => [Math.floor(rnd0() * 6), 6 + Math.floor(rnd0() * 20)]);
+  const k = W / 32;
+  const lines = Array.from({ length: Math.ceil(H / 3) }, () => [Math.floor(rnd0() * 6 * k), Math.floor((6 + rnd0() * 20) * k)]);
   return makeTexture((x, y, rnd) => {
     const bg = [20, 36, 70];
-    if (y % 3 === 1 && y > 2 && y < 30) {
+    if (y % 3 === 1 && y > 2 && y < H - 2) {
       const [start, len] = lines[Math.floor(y / 3)];
       if (x > 2 + start && x < 2 + start + len) return rnd() < 0.15 ? [255, 200, 120] : [130, 230, 255];
     }
     return shade(bg, 0.9 + rnd() * 0.2);
-  }, 72);
+  }, 72, W, H);
 }
 
 // Экран ноутбука с «макетом»: панели редактора и карточки на холсте.
-export function designScreen() {
+// Размеры в долях экрана (u — по ширине, v — по высоте), поэтому рисунок подходит любому W×H.
+export function designScreen(W = 32, H = 32) {
   return makeTexture((x, y, rnd) => {
-    if (y < 3) return [52, 52, 60]; // верхняя полоска
-    if (x < 6) return y % 4 === 1 && x > 1 && x < 5 ? [120, 120, 135] : [44, 44, 52]; // слои
-    if (x > 26) return y % 5 === 2 && x < 31 ? [110, 110, 125] : [44, 44, 52]; // свойства
+    const u = x / W, v = y / H;
+    if (y < 2) return [52, 52, 60]; // верхняя полоска
+    if (u < 0.16) return y % 3 === 1 && x > 1 && u < 0.13 ? [120, 120, 135] : [44, 44, 52]; // слои
+    if (u > 0.84) return y % 4 === 2 && u < 0.97 ? [110, 110, 125] : [44, 44, 52]; // свойства
     // холст с тремя карточками
-    if (y > 6 && y < 17 && x > 8 && x < 16) return [240, 130, 80];
-    if (y > 6 && y < 17 && x > 17 && x < 25) return [90, 160, 220];
-    if (y > 19 && y < 28 && x > 8 && x < 25) return y === 22 || y === 25 ? [70, 70, 80] : [235, 232, 225];
+    if (v > 0.18 && v < 0.52 && u > 0.24 && u < 0.48) return [240, 130, 80];
+    if (v > 0.18 && v < 0.52 && u > 0.52 && u < 0.76) return [90, 160, 220];
+    if (v > 0.6 && v < 0.86 && u > 0.24 && u < 0.76) return y === Math.round(H * 0.68) || y === Math.round(H * 0.78) ? [70, 70, 80] : [235, 232, 225];
     return shade([200, 200, 205], 0.97 + rnd() * 0.04);
-  }, 81);
+  }, 81, W, H);
 }
 
 // Вид из окна: петербург белой ночью. Ширина — 32 пикселя на клетку окна.

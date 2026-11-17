@@ -22,6 +22,15 @@ function box(w, h, d, mat, x = 0, y = 0, z = 0) {
   return m;
 }
 
+// Тонкие листья растений — без дрожания вершин: верх и низ листа толщиной в сантиметр
+// прыгают по сетке врозь, листья протыкают друг друга и мерцают.
+// Дрожание включается на материал, поэтому у листьев свои материалы (leaf, leafDark) —
+// если отдать их и «дрожащей» детали, листья снова задрожат.
+function steady(mesh) {
+  mesh.userData.noSnap = true;
+  return mesh;
+}
+
 function cylinder(rTop, rBottom, h, mat, x = 0, y = 0, z = 0, segments = 8) {
   const m = new THREE.Mesh(new THREE.CylinderGeometry(rTop, rBottom, h, segments), mat);
   m.position.set(x, y + h / 2, z);
@@ -222,7 +231,7 @@ const builders = {
       const leaf = box(0.16, 0.012, 0.07, m.leaf, 0, 0, 0);
       leaf.position.set(-0.12 + Math.cos(i * 1.3) * 0.07, y + 0.18 + (i % 3) * 0.04, zc - 0.12 + Math.sin(i * 1.3) * 0.07);
       leaf.rotation.set(0.5 * Math.sin(i * 2.1), i * 1.3, 0.5);
-      g.add(leaf);
+      g.add(steady(leaf));
     }
     // настольная лампа
     g.add(cylinder(0.06, 0.07, 0.02, m.metalBlack, 0.16, y, zc - 0.14));
@@ -240,13 +249,13 @@ const builders = {
     // Серебристый ноутбук с открытой крышкой. Ставится на стол (onTopOf).
     // Что на экране — поле screen в data.js: 'design' (макет) или 'code' (код).
     const g = new THREE.Group();
-    const W = 0.34, D = 0.24, z0 = 0.04;
+    const W = 0.51, D = 0.24, z0 = 0.04;
     g.add(box(W, 0.014, D, m.silver, 0, 0, z0));
     const keys = new THREE.Mesh(new THREE.PlaneGeometry(W - 0.04, 0.1), m.keys);
     keys.rotation.x = -Math.PI / 2;
     keys.position.set(0, 0.0145, z0 - 0.03);
     g.add(keys);
-    const pad = new THREE.Mesh(new THREE.PlaneGeometry(0.1, 0.06), m.silverDark);
+    const pad = new THREE.Mesh(new THREE.PlaneGeometry(0.15, 0.06), m.silverDark);
     pad.rotation.x = -Math.PI / 2;
     pad.position.set(0, 0.0145, z0 + 0.075);
     g.add(pad);
@@ -255,7 +264,7 @@ const builders = {
     lid.position.set(0, 0.014, z0 - D / 2);
     lid.rotation.x = -0.28; // отклонена назад
     lid.add(box(W, 0.23, 0.008, m.silver, 0, 0, -0.004));
-    const scr = new THREE.Mesh(new THREE.PlaneGeometry(W - 0.03, 0.2), item.screen === 'code' ? m.screen : m.designScreen);
+    const scr = new THREE.Mesh(new THREE.PlaneGeometry(W - 0.03, 0.2), item.screen === 'code' ? m.wideScreen : m.designScreen);
     scr.position.set(0, 0.118, 0.0005);
     lid.add(scr);
     g.add(lid);
@@ -308,7 +317,7 @@ const builders = {
         } else if (deco < 0.35) {
           // горшок с растением
           g.add(cylinder(0.06, 0.05, 0.11, m.pot, x1 - 0.08, y + 0.02, zc));
-          g.add(cylinder(0.0, 0.08, 0.16, m.leaf, x1 - 0.08, y + 0.13, zc, 5));
+          g.add(steady(cylinder(0.0, 0.08, 0.16, m.leaf, x1 - 0.08, y + 0.13, zc, 5)));
         }
         const end = deco >= 0.2 && deco < 0.35 ? x1 - 0.17 : x1;
         while (x < end - 0.04) {
@@ -361,11 +370,11 @@ const builders = {
       const stem = box(0.02, h - 0.3, 0.02, m.leafDark, 0, 0, 0);
       stem.position.set(Math.cos(a) * r * 0.5, 0.38, Math.sin(a) * r * 0.5);
       stem.rotation.set(Math.sin(a) * 0.25, 0, -Math.cos(a) * 0.25);
-      g.add(stem);
-      const leaf = box(0.34, 0.015, 0.24, i % 2 ? m.leaf : m.leafDark, 0, 0, 0);
+      g.add(steady(stem));
+      const leaf = box(0.34, 0.03, 0.24, i % 2 ? m.leaf : m.leafDark, 0, 0, 0);
       leaf.position.set(Math.cos(a) * r, 0.38 + h - 0.3, Math.sin(a) * r);
       leaf.rotation.set(0, -a, 0.45);
-      g.add(leaf);
+      g.add(steady(leaf));
     }
     return g;
   },
@@ -439,7 +448,8 @@ export function buildRoom(room, furniture) {
     silver: lambert({ color: '#c6cad1' }),
     silverDark: lambert({ color: '#a9adb5' }),
     keys: lambert({ color: '#2e2f35' }),
-    designScreen: new THREE.MeshBasicMaterial({ map: tex.designScreen() }),
+    designScreen: new THREE.MeshBasicMaterial({ map: tex.designScreen(60, 25) }),
+    wideScreen: new THREE.MeshBasicMaterial({ map: tex.screen(60, 25) }), // код на широком экране
     shell: lambert({ color: '#efece6' }),
     woodLight: lambert({ map: tex.wood('#c79a62') }),
     case: lambert({ color: '#f1eee8' }),

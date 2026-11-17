@@ -270,12 +270,6 @@ export const furniture = [
     facing: 'north',
     color: '#e8833a',
   },
-  {
-    id: 'plant',
-    type: 'plant',
-    cells: [[7, 1]],
-    blocks: true,
-  },
 
   // --- у задней стены слева: торшер и книжный шкаф ---
   {
@@ -319,6 +313,12 @@ export const furniture = [
     //     occupies: true,
     //   },
     // ],
+  },
+  {
+    id: 'plant',
+    type: 'plant',
+    cells: [[0, 4]], // у дивана
+    blocks: true,
   },
   {
     id: 'poster',
