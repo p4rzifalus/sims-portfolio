@@ -8,6 +8,7 @@ import {
   characters as characterData,
   animations,
   characterActions,
+  social,
   panels as panelTexts,
   welcome,
   dossier,
@@ -21,11 +22,12 @@ import { renderPortrait } from './portraits.js';
 import { createUI } from './ui.js';
 import { createRadialMenu } from './menu.js';
 import { createPanels } from './panels.js';
-import { performAction, freeSpot } from './actions.js';
+import { performAction, performSocial, freeSpot } from './actions.js';
+import { createBanners } from './banner.js';
 import { showWelcome } from './welcome.js';
 
 // Короткие слова во всех текстах приклеиваем к следующему слову (см. typo.js).
-typoDeep([ui, characterData, characterActions, panelTexts, furniture, welcome, dossier]);
+typoDeep([ui, characterData, characterActions, social, panelTexts, furniture, welcome, dossier]);
 
 // ---------- Настройки вида (не контент, поэтому здесь, а не в data.js) ----------
 const CAMERA_ELEVATION = 30; // наклон камеры, градусы (0 — сбоку, 90 — сверху)
@@ -253,6 +255,7 @@ resize(); // на телефоне кадр зависит от высоты н�
 const uiRoot = document.getElementById('ui');
 const menu = createRadialMenu(uiRoot, ui);
 const panels = createPanels(uiRoot, { panels: panelTexts, ui, getPortrait: (id) => portraits[id] });
+const banners = createBanners(uiRoot, ui);
 window.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') menu.close();
 });
@@ -262,6 +265,12 @@ const cameraYaw = Math.atan2(camDir.x, camDir.z);
 
 function startAction(actor, action, extra) {
   performAction({ actor, action, furniture, occupancy, panels, cameraYaw, ...extra });
+}
+
+function startSocial(actor, target, action, choice) {
+  performSocial({
+    actor, target, action, choice, grid, banners, getPortrait: (id) => portraits[id], duration: social.duration,
+  });
 }
 
 function select(id) {
@@ -358,16 +367,22 @@ canvas.addEventListener('pointerdown', (e) => {
   const target = pick(e.clientX, e.clientY);
   if (!target) return;
 
-  // Персонаж: чужой — выбрать; уже выбранный — меню «Помахать / О себе».
+  // Персонаж: уже выбранный — меню «помахать / о себе»;
+  // второй — меню взаимодействий (поговорить, пощекотать… и «выбрать»).
   if (target.type === 'character') {
     const ch = target.character;
-    if (ch !== selected) {
-      select(ch.id);
+    const actor = selected;
+    if (ch !== actor) {
+      openMenu(e, social.actions, (action) => {
+        if (action.select) select(ch.id);
+        else if (action.who === 'target') startAction(ch, action, { target: ch });
+        else if (action.choices) openMenu(e, action.choices, (choice) => startSocial(actor, ch, action, choice));
+        else startSocial(actor, ch, action);
+      });
       return;
     }
     openMenu(e, characterActions, (action) => {
-      const actor = action.who === 'target' ? ch : selected;
-      startAction(actor, action, { target: ch });
+      startAction(action.who === 'target' ? ch : actor, action, { target: ch });
     });
     return;
   }

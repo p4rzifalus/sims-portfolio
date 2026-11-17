@@ -947,6 +947,99 @@ a.work-card:hover {
   filter: brightness(1.15);
 }
 
+/* ---------- Баннер взаимодействия (поговорить, пощекотать…) ---------- */
+/* Сверху по центру: портрет того, кто начал, значок и текст, портрет второго. */
+.banner {
+  pointer-events: auto;
+  position: absolute;
+  z-index: 13;
+  top: 14px;
+  left: 50%;
+  translate: -50% 0;
+  width: min(440px, 50vw);
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #e9f0ff, #c3d4f7);
+  color: #1f2f6e;
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 4px var(--ui-blue), 0 8px 24px rgba(0, 0, 0, 0.45);
+  animation: banner-in 0.4s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+.banner.leaving {
+  animation: banner-out 0.25s ease-in both;
+}
+@keyframes banner-in {
+  from {
+    opacity: 0;
+    translate: -50% -40px;
+  }
+}
+@keyframes banner-out {
+  to {
+    opacity: 0;
+    translate: -50% -40px;
+  }
+}
+.banner-face {
+  --accent: #fff;
+  width: 52px;
+  height: 52px;
+  flex: none;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 3px solid var(--accent);
+  background: radial-gradient(circle at 40% 35%, #b9ccf6, var(--ui-blue));
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.25);
+}
+.banner-face img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  image-rendering: pixelated;
+}
+.banner-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  text-align: center;
+}
+.banner-icon {
+  font-size: 22px;
+  line-height: 1;
+}
+.banner-text {
+  font-size: 14px;
+  font-weight: bold;
+  line-height: 1.3;
+}
+.banner-x {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background: #d8413a;
+  color: #fff;
+  font: bold 11px/1 system-ui, sans-serif;
+  cursor: pointer;
+}
+.banner-x:hover {
+  filter: brightness(1.15);
+}
+/* Пока висит баннер, письмо-приветствие спускается под него (плавность — ниже, у .notice). */
+#ui:has(.banner:not(.leaving)) .notice {
+  top: 108px;
+}
+
 /* ---------- Книжный шкаф: ссылка с подписью справа ---------- */
 .link-row {
   display: flex;
@@ -968,14 +1061,18 @@ a.work-card:hover {
 .portraits,
 .hud,
 .panel,
-.notice {
+.banner {
   transition: opacity 0.35s;
+}
+.notice {
+  transition: opacity 0.35s, top 0.3s;
 }
 /* #ui в селекторе — чтобы перебить «#ui > * { pointer-events: auto }» */
 body.closeup #ui .portraits,
 body.closeup #ui .hud,
 body.closeup #ui .panel,
-body.closeup #ui .notice {
+body.closeup #ui .notice,
+body.closeup #ui .banner {
   opacity: 0;
   pointer-events: none;
 }
@@ -1012,6 +1109,13 @@ body.closeup #ui .closeup-bar {
 /* ---------- Телефон: письмо и панели на всю ширину ----------
    (здесь, в конце файла, чтобы перебить обычные правила .notice и .panel) */
 @media (max-width: 640px) {
+  .banner {
+    top: 84px;
+    width: calc(100vw - 16px);
+  }
+  #ui:has(.banner:not(.leaving)) .notice {
+    top: 176px;
+  }
   .notice {
     top: 84px;
     left: 8px;

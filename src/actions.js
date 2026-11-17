@@ -4,6 +4,7 @@
 // или новым действием. Тогда персонаж «прибирается»: панель закрывается,
 // предмет убирается, он встаёт, место освобождается.
 import { FACING_ANGLE, seatPoint } from './room.js';
+import { typo } from './typo.js';
 
 // Места, куда можно подойти для действия: [{ goTo, key }].
 // key — чем занято место (для «занято»); null — место не занимается.
@@ -90,5 +91,84 @@ export function performAction({ actor, action, item, target, furniture, occupanc
       // Без панели: сидит / держит предмет, пока действие не отменят.
       await task.step(new Promise(() => {}));
     }
+  });
+}
+
+// ---------- Взаимодействия персонажей (social в data.js) ----------
+// actor подходит к target, оба поворачиваются друг к другу, сверху — баннер.
+// Движений пока нет: их сделаем, когда появятся новые модели.
+// Второй персонаж на это время тоже «занят»: если его отвлечь (клик по полу,
+// крестик, другое действие), взаимодействие заканчивается у обоих.
+
+// {actor}, {target.acc}, {gift} → имена в нужном падеже и выбранный подарок.
+function fillBanner(template, actor, target, choice) {
+  const name = (ch, form) => ch.data.forms?.[form || 'nom'] || ch.data.name;
+  return typo(
+    template.replace(/\{(actor|target|gift)(?:\.(\w+))?\}/g, (_, who, form) => {
+      if (who === 'gift') return choice?.label || '';
+      return name(who === 'actor' ? actor : target, form);
+    }),
+  );
+}
+
+// Свободная клетка рядом с target (сначала по сторонам, потом по диагонали), ближайшая к actor.
+function spotNear(grid, actor, target) {
+  const [tc, tr] = grid.worldToCell(target.position.x, target.position.z);
+  const [ac, ar] = grid.worldToCell(actor.position.x, actor.position.z);
+  const near = [];
+  for (let dr = -1; dr <= 1; dr++) {
+    for (let dc = -1; dc <= 1; dc++) {
+      const c = tc + dc, r = tr + dr;
+      if ((dc || dr) && grid.isFree(c, r)) near.push({ c, r, diag: dc && dr ? 1 : 0, d: Math.hypot(c - ac, r - ar) });
+    }
+  }
+  near.sort((a, b) => a.diag - b.diag || a.d - b.d);
+  return near[0] ? [near[0].c, near[0].r] : null;
+}
+
+const yawTo = (from, to) => Math.atan2(to.position.x - from.position.x, to.position.z - from.position.z);
+
+export function performSocial({ actor, target, action, choice, grid, banners, getPortrait, duration }) {
+  return actor.runTask({ icon: action.icon, label: action.actorStatus || action.label }, async (task) => {
+    // 1. Второй бросает своё дело (встаёт со стула, останавливается)…
+    await task.step(target.cancelTask());
+    if (target.isWalking) target.stop();
+    // …и ждёт, пока взаимодействие не кончится. Его задачу отменит «уборка» первого.
+    const targetTask = await task.step(
+      new Promise((resolve) => {
+        target.runTask({ icon: action.icon, label: action.targetStatus || action.label }, (t) => {
+          resolve(t);
+          if (task.cancelled) return; // первого уже отменили, пока второй вставал
+          t.onCleanup(() => task.cancel()); // второго отвлекли — первый тоже перестаёт
+          return t.step(new Promise(() => {}));
+        });
+      }),
+    );
+    task.onCleanup(() => targetTask.cancel());
+
+    // 2. Подойти (если ещё не рядом)
+    const close = Math.hypot(target.position.x - actor.position.x, target.position.z - actor.position.z) < 1.6;
+    if (!close) {
+      const spot = spotNear(grid, actor, target);
+      if (!spot) throw new Error('рядом со вторым персонажем нет свободной клетки');
+      task.onCleanup(() => {
+        if (actor.isWalking) actor.stop();
+      });
+      await task.step(actor.walkToAsync(...spot));
+    }
+
+    // 3. Повернуться друг к другу
+    await task.step(Promise.all([actor.faceTo(yawTo(actor, target)), target.faceTo(yawTo(target, actor))]));
+
+    // 4. Баннер
+    const closeBanner = banners.show({
+      icon: choice?.icon || action.icon,
+      text: fillBanner(action.banner, actor, target, choice),
+      left: { portrait: getPortrait(actor.id), color: actor.data.color },
+      right: { portrait: getPortrait(target.id), color: target.data.color },
+      onClose: () => task.cancel(),
+    });
+    task.onCleanup(closeBanner);
+    await task.step(actor.wait(action.duration || duration));
   });
 }
