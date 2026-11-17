@@ -304,3 +304,29 @@ export function poster({ title = '', lines = [], color = '#e8833a', textColor = 
   ctx.putImageData(out, 0, 0);
   return canvasTexture(canvas);
 }
+
+// Плакат-картинка из файла (поле image в data.js). Картинка уменьшается до W×H пикселей —
+// так она выглядит «пиксельной», как остальная комната, но крупный текст на ней читается,
+// когда камера подъезжает к стене. Пока файл грузится, плакат тёмный.
+// Уменьшенные копии (mipmaps) нужны, чтобы издалека плакат не рябил.
+export function imagePoster(url, W = 240, H = 300) {
+  const canvas = document.createElement('canvas');
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#1d1b26';
+  ctx.fillRect(0, 0, W, H);
+  const tex = canvasTexture(canvas);
+  tex.minFilter = THREE.NearestMipmapLinearFilter;
+  tex.generateMipmaps = true;
+  tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+  const img = new Image();
+  img.onload = () => {
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(img, 0, 0, W, H);
+    tex.needsUpdate = true;
+  };
+  img.onerror = () => console.warn(`Картинка плаката не нашлась: ${url} (проверьте поле image в data.js)`);
+  img.src = url;
+  return tex;
+}

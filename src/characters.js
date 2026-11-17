@@ -7,6 +7,7 @@ import { applyPS1 } from './ps1.js';
 import { ps1 as ps1Settings } from './data.js';
 import { FACING_ANGLE } from './room.js';
 import { findPath, nearestFreeCell } from './pathfinding.js';
+import { buildBook, buildLaptop } from './props.js';
 
 const MODELS_DIR = `${import.meta.env.BASE_URL}models/people/`; // работает и в подпапке сайта
 const MODEL_HEIGHT = 0.776; // рост модели в её собственных единицах (измерено)
@@ -29,6 +30,33 @@ const FADE = 0.25; // длительность плавного перехода
 // (проверено на всех 12 моделях), поэтому рука поднимается в сторону, до уровня уха.
 const WAVE = { duration: 1.8, raise: -1.0, swing: 0.15, speed: 10, fade: 0.25 };
 const Z_AXIS = new THREE.Vector3(0, 0, 1);
+const Y_AXIS = new THREE.Vector3(0, 1, 0);
+
+// Кисть — на конце руки: в 0.26 ед. модели от плеча вдоль оси X кости
+// (правая рука вытянута в −X, левая в +X; проверено по вершинам).
+const HAND = 0.26;
+
+// Руки поверх анимации (радианы, в системе кости): forward — вперёд (минус — назад
+// за спину), up — в сторону и вверх. Правая и левая зеркальны — знаки учтены в коде.
+// Подобрано на глаз по скриншотам.
+const ARMS = {
+  rest: { forward: 0, up: 0 },
+  behind: { forward: -0.9, up: 0.35 }, // тянется за спину за ноутбуком
+  type: { forward: 1.5, up: -0.1 }, // руки над клавиатурой (подобрано перебором: кисти над клавишами)
+  typeSwing: 0.07, // как сильно «стучат» руки
+  typeSpeed: 11,
+};
+
+// Ноутбук в системе персонажа (клетки): за спиной и на коленях, сидя.
+const LAPTOP = {
+  behind: new THREE.Vector3(0, 0.42, -0.3),
+  lap: new THREE.Vector3(0, 0.18, 0.4), // на коленях: руки у чиби короткие, ближе не дотянуться
+  open: -1.9, // угол открытой крышки
+};
+// Книга: насколько выше середины между кистями и насколько дальше от груди.
+const BOOK_HOLD = new THREE.Vector3(0, 0.08, 0.05);
+const BOOK_TILT = -0.35; // наклон книги к себе, как при чтении
+const BOOK_COLORS = ['#9c3a32', '#2f5d8a', '#d1a63a', '#3d7a4a', '#6b4a8a'];
 
 // Посадка: в позе sit модель опускается, поэтому на сиденье её надо приподнять.
 const SIT_LIFT = 0.02; // насколько выше сиденья точка персонажа (подобрано на глаз)
@@ -147,6 +175,12 @@ export class Character {
     model.userData.characterId = data.id;
     this.model = model;
     this.armRight = model.getObjectByName('arm-right');
+    this.armLeft = model.getObjectByName('arm-left');
+    this.arms = { ...ARMS.rest, typing: 0 }; // текущая поза рук поверх анимации
+    this.armTween = null;
+    this.prop = null; // что в руках: { kind, mesh, follow }
+    this.animators = []; // покадровые плавные изменения (см. animate)
+    this.propGen = 0; // номер «доставания»: если его убрали на полпути, доставание прекращается
     this.root.add(model);
 
     // Круглая тень под ногами
@@ -303,6 +337,137 @@ export class Character {
     this.standSpot = null;
   }
 
+  // ---------- Предметы в руках ----------
+
+  // Покадровая анимация: fn(k) вызывается каждый кадр, k растёт от 0 до 1 за duration секунд.
+  animate(duration, fn) {
+    return new Promise((resolve) => this.animators.push({ t: 0, duration, fn, resolve }));
+  }
+
+  // Плавно перевести руки в позу из ARMS.
+  poseArms(pose, duration = 0.4) {
+    const from = { forward: this.arms.forward, up: this.arms.up };
+    const to = ARMS[pose];
+    return this.animate(duration, (k) => {
+      const e = smooth(k);
+      this.arms.forward = from.forward + (to.forward - from.forward) * e;
+      this.arms.up = from.up + (to.up - from.up) * e;
+    });
+  }
+
+  // Точка кисти (side: 'left' | 'right') в системе персонажа.
+  handPoint(side, target = new THREE.Vector3()) {
+    const bone = side === 'right' ? this.armRight : this.armLeft;
+    target.set(side === 'right' ? -HAND : HAND, 0, 0).applyMatrix4(bone.matrixWorld);
+    return this.root.worldToLocal(target);
+  }
+
+  // Предмет — часть персонажа: клик по нему выбирает персонажа.
+  attachProp(kind, mesh) {
+    mesh.traverse((o) => {
+      if (o.isMesh) o.userData.characterId = this.id;
+    });
+    applyPS1(mesh, ps1Settings.characterSnap);
+    this.root.add(mesh);
+    this.prop = { kind, mesh, follow: null };
+    return this.prop;
+  }
+
+  // Анимацию проиграть один раз и остановиться на последнем кадре.
+  playOnce(key) {
+    const action = this.actions[this.anim[key]];
+    if (!action) return 0;
+    action.setLoop(THREE.LoopOnce, 1);
+    action.clampWhenFinished = true;
+    if (action === this.current) this.current = null; // чтобы play() запустил заново
+    this.play(key, 0.15);
+    return action.getClip().duration / action.timeScale;
+  }
+
+  // Достать предмет: 'book' — стоя снять книгу с полки; 'laptop' — сидя достать
+  // ноутбук из-за спины, открыть и начать печатать. Обещание — когда предмет в руках.
+  async takeProp(kind) {
+    await this.putAway();
+    const gen = this.propGen;
+    const alive = () => gen === this.propGen; // false — пока доставали, предмет велели убрать
+    if (kind === 'book') {
+      const len = this.playOnce('reach');
+      await this.wait(len * 0.45); // рука у полки
+      if (!alive()) return;
+      const book = this.attachProp('book', buildBook(BOOK_COLORS[Math.floor(Math.random() * BOOK_COLORS.length)]));
+      book.follow = 'right';
+      book.mesh.rotation.x = BOOK_TILT;
+      await this.wait(len * 0.55);
+      if (!alive()) return;
+      this.play('hold', 0.25);
+      book.follow = 'both';
+      return;
+    }
+    if (kind === 'laptop') {
+      const laptop = this.attachProp('laptop', buildLaptop());
+      const mesh = laptop.mesh;
+      const lid = mesh.userData.lid;
+      mesh.rotation.y = Math.PI; // экраном от себя
+      mesh.position.copy(LAPTOP.behind);
+      mesh.visible = false;
+      await this.poseArms('behind', 0.35);
+      if (!alive()) return;
+      mesh.visible = true;
+      // из-за спины — дугой через бок на колени, руки идут вперёд
+      const side = new THREE.Vector3(-0.32, 0.5, 0);
+      const arms = this.poseArms('type', 0.6);
+      await this.animate(0.6, (k) => {
+        const e = smooth(k);
+        const a = new THREE.Vector3().lerpVectors(LAPTOP.behind, side, Math.min(1, e * 2));
+        const b = new THREE.Vector3().lerpVectors(side, LAPTOP.lap, Math.max(0, e * 2 - 1));
+        mesh.position.copy(e < 0.5 ? a : b);
+        mesh.rotation.z = Math.sin(e * Math.PI) * 0.6;
+      });
+      await arms;
+      if (!alive()) return;
+      await this.animate(0.35, (k) => (lid.rotation.x = LAPTOP.open * smooth(k)));
+      if (!alive()) return;
+      await this.animate(0.3, (k) => (this.arms.typing = k));
+    }
+  }
+
+  // Убрать предмет из рук (книгу — обратно на полку, ноутбук — за спину).
+  async putAway() {
+    // Прервать доставание, если оно ещё идёт: его анимации завершаются сразу.
+    this.propGen++;
+    for (const a of this.animators) a.resolve();
+    this.animators = [];
+    this.arms.typing = 0;
+    const prop = this.prop;
+    if (!prop) {
+      // предмет так и не достали: опустить руки / выйти из позы «тянется к полке»
+      const pose = this.current?.getClip().name;
+      if (pose === this.anim.reach || pose === this.anim.hold) this.play('idle', 0.3);
+      if (this.arms.forward || this.arms.up) await this.poseArms('rest', 0.3);
+      return;
+    }
+    if (prop.kind === 'book') {
+      const len = this.playOnce('reach');
+      prop.follow = 'right';
+      await this.wait(len * 0.45);
+      this.root.remove(prop.mesh);
+      this.prop = null;
+      this.play('idle', 0.3);
+    } else if (prop.kind === 'laptop') {
+      const mesh = prop.mesh;
+      const lid = mesh.userData.lid;
+      const from = mesh.position.clone();
+      this.arms.typing = 0;
+      await this.animate(0.25, (k) => (lid.rotation.x = LAPTOP.open * (1 - smooth(k))));
+      const arms = this.poseArms('behind', 0.4);
+      await this.animate(0.4, (k) => mesh.position.lerpVectors(from, LAPTOP.behind, smooth(k)));
+      await arms;
+      this.root.remove(mesh);
+      this.prop = null;
+      await this.poseArms('rest', 0.3);
+    }
+  }
+
   stopWave() {
     if (!this.waving) return;
     this.waving.resolve();
@@ -352,7 +517,17 @@ export class Character {
 
   update(dt) {
     this.clock += dt;
+    // Взмах и позы рук докручивают кости поверх анимации. Но анимация переписывает кость,
+    // только когда её поза меняется: в неподвижной позе (sit, holding-both) докрутка
+    // копилась бы кадр за кадром. Поэтому сначала возвращаем руки к позе из анимации.
+    if (this.armBase) {
+      this.armRight.quaternion.copy(this.armBase.right);
+      this.armLeft.quaternion.copy(this.armBase.left);
+    }
     this.mixer.update(dt);
+    this.armBase ||= { right: new THREE.Quaternion(), left: new THREE.Quaternion() };
+    this.armBase.right.copy(this.armRight.quaternion);
+    this.armBase.left.copy(this.armLeft.quaternion);
 
     if (this.tween) {
       const tw = this.tween;
@@ -400,6 +575,39 @@ export class Character {
         this.waving = null;
         w.resolve();
       }
+    }
+
+    // Покадровые анимации предметов и рук
+    if (this.animators.length) {
+      this.animators = this.animators.filter((a) => {
+        a.t += dt;
+        const k = Math.min(1, a.t / a.duration);
+        a.fn(k);
+        if (k < 1) return true;
+        a.resolve();
+        return false;
+      });
+    }
+
+    // Руки поверх анимации: вперёд/назад (ось Y кости) и в сторону (ось Z).
+    // У правой руки «вперёд» — плюс, у левой — минус (руки зеркальны).
+    const typing = this.arms.typing ? Math.sin(this.clock * ARMS.typeSpeed) * ARMS.typeSwing * this.arms.typing : 0;
+    if (this.arms.forward || this.arms.up || typing) {
+      const q = new THREE.Quaternion();
+      this.armRight.quaternion
+        .multiply(q.setFromAxisAngle(Y_AXIS, this.arms.forward + typing))
+        .multiply(q.setFromAxisAngle(Z_AXIS, -this.arms.up));
+      this.armLeft.quaternion
+        .multiply(q.setFromAxisAngle(Y_AXIS, -this.arms.forward + typing))
+        .multiply(q.setFromAxisAngle(Z_AXIS, this.arms.up));
+    }
+
+    // Книга держится в кисти (или между кистями)
+    if (this.prop?.follow) {
+      this.root.updateMatrixWorld(true);
+      const p = this.prop.mesh.position;
+      if (this.prop.follow === 'right') this.handPoint('right', p);
+      else p.addVectors(this.handPoint('right'), this.handPoint('left')).multiplyScalar(0.5).add(BOOK_HOLD);
     }
 
     // Плавный поворот лицом по направлению движения

@@ -20,7 +20,7 @@ import { renderPortrait } from './portraits.js';
 import { createUI } from './ui.js';
 import { createRadialMenu } from './menu.js';
 import { createPanels } from './panels.js';
-import { performAction } from './actions.js';
+import { performAction, freeSpot } from './actions.js';
 import { showWelcome } from './welcome.js';
 
 // Короткие слова во всех текстах приклеиваем к следующему слову (см. typo.js).
@@ -32,6 +32,9 @@ const CAMERA_AZIMUTH = 45; // поворот вокруг комнаты, гра
 const CAMERA_DISTANCE = 20;
 // Доля экрана, которую оставляем свободной под интерфейс (портреты слева, панель снизу).
 const SCREEN_MARGINS = { left: 0.11, right: 0.04, top: 0.05, bottom: 0.24 };
+// Крупный план предмета на стене (плакат): интерфейс спрятан, снизу — только кнопки.
+const CLOSEUP_MARGINS = { left: 0.06, right: 0.06, top: 0.07, bottom: 0.17 };
+const CLOSEUP_TIME = 0.9; // сколько секунд камера едет к стене и обратно
 
 // ---------- Рендерер ----------
 // Сглаживание краёв делает сам проход PS1Pass (в режиме без PS1), поэтому здесь оно не нужно.
@@ -68,31 +71,80 @@ camera.updateMatrixWorld();
 const camRight = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0);
 const camUp = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 1);
 
-// Подобрать рамку камеры так, чтобы комната целиком влезла в свободную часть экрана.
-function fitCamera(aspect) {
-  const inv = camera.matrixWorldInverse;
+// «Кадр» камеры: куда смотрит (center), с какой стороны (quat) и какая рамка вокруг
+// центра (frame: left/right/top/bottom в мировых единицах). Между кадрами камера едет плавно.
+// Рамка подбирается так, чтобы точки corners целиком влезли в свободную часть экрана.
+function makeShot(center, quat, corners, margins, aspect) {
+  const inv = quat.clone().invert();
   const v = new THREE.Vector3();
   let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-  for (const x of [-0.15, room.columns + 0.15]) {
-    for (const y of [-0.3, room.wallHeight]) {
-      for (const z of [-0.15, room.rows + 0.15]) {
-        v.set(x, y, z).applyMatrix4(inv);
-        minX = Math.min(minX, v.x); maxX = Math.max(maxX, v.x);
-        minY = Math.min(minY, v.y); maxY = Math.max(maxY, v.y);
-      }
-    }
+  for (const c of corners) {
+    v.copy(c).sub(center).applyQuaternion(inv);
+    minX = Math.min(minX, v.x); maxX = Math.max(maxX, v.x);
+    minY = Math.min(minY, v.y); maxY = Math.max(maxY, v.y);
   }
-  const m = SCREEN_MARGINS;
+  const m = margins;
   const uw = 1 - m.left - m.right;
   const uh = 1 - m.top - m.bottom;
   const F = Math.max((maxY - minY) / uh, (maxX - minX) / (aspect * uw)); // высота кадра в мировых единицах
   const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
-  camera.left = cx - (m.left + uw / 2) * aspect * F;
-  camera.right = camera.left + aspect * F;
-  camera.bottom = cy - (m.bottom + uh / 2) * F;
-  camera.top = camera.bottom + F;
-  camera.updateProjectionMatrix();
+  const left = cx - (m.left + uw / 2) * aspect * F;
+  const bottom = cy - (m.bottom + uh / 2) * F;
+  return { center: center.clone(), quat: quat.clone(), frame: { left, right: left + aspect * F, bottom, top: bottom + F } };
 }
+
+function boxCorners(box) {
+  const out = [];
+  for (const x of [box.min.x, box.max.x]) for (const y of [box.min.y, box.max.y]) for (const z of [box.min.z, box.max.z]) out.push(new THREE.Vector3(x, y, z));
+  return out;
+}
+
+// Вся комната целиком (обычный вид).
+const roomQuat = camera.quaternion.clone();
+const roomBox = new THREE.Box3(new THREE.Vector3(-0.15, -0.3, -0.15), new THREE.Vector3(room.columns + 0.15, room.wallHeight, room.rows + 0.15));
+const roomShot = (aspect) => makeShot(target, roomQuat, boxCorners(roomBox), SCREEN_MARGINS, aspect);
+
+// Предмет на стене прямо перед камерой: камера смотрит перпендикулярно стене.
+function closeUpShot(item, aspect) {
+  const obj = built.objects[item.id];
+  const box = new THREE.Box3().setFromObject(obj);
+  const center = box.getCenter(new THREE.Vector3());
+  const normal = item.wall === 'west' ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 0, 1);
+  const eye = center.clone().addScaledVector(normal, CAMERA_DISTANCE);
+  const quat = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().lookAt(eye, center, camera.up));
+  return makeShot(center, quat, boxCorners(box), CLOSEUP_MARGINS, aspect);
+}
+
+// Куда едет камера: from → to, t — сколько секунд прошло.
+const cam = { from: null, to: null, t: CLOSEUP_TIME, closeUp: null /* предмет крупным планом */ };
+function currentAspect() {
+  return pass.lowW / pass.lowH;
+}
+function refreshShots() {
+  const aspect = currentAspect();
+  const target = cam.closeUp ? closeUpShot(cam.closeUp, aspect) : roomShot(aspect);
+  if (!cam.to || cam.t >= CLOSEUP_TIME) cam.from = target; // не в пути — просто встать в кадр
+  cam.to = target;
+}
+
+const camPos = new THREE.Vector3();
+function placeCamera(time) {
+  const k = cam.from === cam.to ? 1 : smooth(Math.min(1, cam.t / CLOSEUP_TIME));
+  const a = cam.from, b = cam.to;
+  camera.quaternion.slerpQuaternions(a.quat, b.quat, k);
+  camPos.lerpVectors(a.center, b.center, k);
+  camera.position.copy(camPos).addScaledVector(new THREE.Vector3(0, 0, 1).applyQuaternion(camera.quaternion), CAMERA_DISTANCE);
+  for (const side of ['left', 'right', 'top', 'bottom']) camera[side] = a.frame[side] + (b.frame[side] - a.frame[side]) * k;
+  camera.updateProjectionMatrix();
+  if (ps1.cameraSway) {
+    // Едва заметное покачивание: из-за него видно, как «дрожат» вершины.
+    camera.position.addScaledVector(camRight.set(1, 0, 0).applyQuaternion(camera.quaternion), Math.sin(time * 0.7) * 0.04);
+    camera.position.addScaledVector(camUp.set(0, 1, 0).applyQuaternion(camera.quaternion), Math.sin(time * 0.53 + 1) * 0.03);
+  }
+  camera.updateMatrixWorld();
+  return k;
+}
+const smooth = (x) => x * x * (3 - 2 * x);
 
 // ---------- PS1 ----------
 const pass = new PS1Pass();
@@ -116,7 +168,8 @@ function resize() {
   view.width = (pass.lowW * pass.scale) / dpr;
   view.height = (pass.lowH * pass.scale) / dpr;
   ps1Uniforms.uSnapRes.value.set((ps1.vertexSnap * aspect) / 2, ps1.vertexSnap / 2);
-  fitCamera(aspect);
+  refreshShots();
+  placeCamera(performance.now() / 1000);
 }
 
 // Точка в мире → координаты на экране (CSS-пиксели от левого верхнего угла).
@@ -253,7 +306,8 @@ canvas.addEventListener('contextmenu', (e) => e.preventDefault()); // правы
 let hovered = null; // объект, который сейчас обведён
 function updateHover() {
   if (menu.isOpen) return; // пока открыто меню, обведён предмет, для которого оно открыто
-  const target = mouse.inside ? pick(mouse.x, mouse.y) : null;
+  const busyCamera = cam.closeUp || cam.t < CLOSEUP_TIME; // крупным планом ничего не обводим
+  const target = mouse.inside && !busyCamera ? pick(mouse.x, mouse.y) : null;
   const obj = target && target.type !== 'floor' ? target.object : null;
   if (obj === hovered) return;
   if (hovered) setOutlined(hovered, false);
@@ -276,7 +330,14 @@ function openMenu(e, items, onPick) {
 }
 
 canvas.addEventListener('pointerdown', (e) => {
-  if (e.button !== 0 || !selected) return;
+  if (e.button !== 0) return;
+  // Крупный план: клик мимо предмета возвращает в комнату.
+  if (cam.closeUp) {
+    const hit = pick(e.clientX, e.clientY);
+    if (hit?.id !== cam.closeUp.id) closeCloseUp();
+    return;
+  }
+  if (cam.t < CLOSEUP_TIME || !selected) return; // камера ещё едет
   const target = pick(e.clientX, e.clientY);
   if (!target) return;
 
@@ -298,11 +359,11 @@ canvas.addEventListener('pointerdown', (e) => {
   if (target.type === 'object') {
     const item = furniture.find((f) => f.id === target.id);
     const actor = selected;
-    const items = item.actions.map((a) => {
-      const key = a.occupies ? a.sitOn || item.id : null;
-      const holder = key && occupancy.get(key);
-      return { ...a, disabled: Boolean(holder && holder !== actor) };
-    });
+    if (item.closeUp) {
+      openCloseUp(item);
+      return;
+    }
+    const items = item.actions.map((a) => ({ ...a, disabled: !freeSpot(a, item, occupancy, actor) }));
     openMenu(e, items, (action) => startAction(actor, action, { item }));
     return;
   }
@@ -316,6 +377,49 @@ canvas.addEventListener('pointerdown', (e) => {
   else actor.walkTo(c, r);
 });
 
+// ---------- Крупный план предмета на стене (плакат) ----------
+// Камера подъезжает и смотрит на стену прямо, интерфейс прячется,
+// снизу — кнопка-ссылка из data.js (closeUp.button, closeUp.url) и «назад».
+const closeUpBar = document.createElement('div');
+closeUpBar.className = 'closeup-bar';
+const closeUpLink = document.createElement('a');
+closeUpLink.className = 'pill closeup-link';
+closeUpLink.target = '_blank';
+closeUpLink.rel = 'noopener noreferrer';
+const closeUpBack = document.createElement('button');
+closeUpBack.type = 'button';
+closeUpBack.className = 'pill closeup-back';
+closeUpBack.textContent = ui.back;
+closeUpBack.addEventListener('click', () => closeCloseUp());
+closeUpBar.append(closeUpBack, closeUpLink);
+uiRoot.appendChild(closeUpBar);
+
+function moveCamera(closeUp) {
+  menu.close();
+  cam.closeUp = closeUp;
+  // Ехать от того места, где камера сейчас (даже если она ещё в пути).
+  cam.from = {
+    center: camPos.clone(),
+    quat: camera.quaternion.clone(),
+    frame: { left: camera.left, right: camera.right, top: camera.top, bottom: camera.bottom },
+  };
+  cam.to = closeUp ? closeUpShot(closeUp, currentAspect()) : roomShot(currentAspect());
+  cam.t = 0;
+  document.body.classList.toggle('closeup', Boolean(closeUp));
+}
+function openCloseUp(item) {
+  closeUpLink.href = item.closeUp.url;
+  closeUpLink.textContent = item.closeUp.button;
+  closeUpLink.hidden = !item.closeUp.url;
+  moveCamera(item);
+}
+function closeCloseUp() {
+  if (cam.closeUp) moveCamera(null);
+}
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeCloseUp();
+});
+
 // ---------- Цикл отрисовки ----------
 let last = performance.now();
 function frame() {
@@ -326,13 +430,11 @@ function frame() {
 
   for (const ch of characters) ch.update(dt);
   if (debug.visible && selected) debug.setPath([selected.position, ...selected.path]);
-  camera.position.copy(basePos);
-  if (ps1.cameraSway) {
-    // Едва заметное покачивание: из-за него видно, как «дрожат» вершины.
-    camera.position.addScaledVector(camRight, Math.sin(t * 0.7) * 0.04);
-    camera.position.addScaledVector(camUp, Math.sin(t * 0.53 + 1) * 0.03);
-  }
-  camera.updateMatrixWorld();
+  cam.t += dt;
+  const k = placeCamera(t);
+  // Крупным планом персонажи не загораживают плакат: пока камера у стены, их не видно.
+  const atWall = cam.closeUp ? k > 0.5 : k < 0.5;
+  for (const ch of characters) ch.root.visible = !atWall;
 
   ring.update(t);
   if (selected) ring.followFloor(selected.position.y);
@@ -351,7 +453,7 @@ frame();
 if (import.meta.env.DEV) {
   window.__app = {
     scene, camera, grid, debug, setPS1, toScreen, ps1Uniforms, characters, select, pick, occupancy, menu,
-    renderer, pass, basePos, camRight, camUp, built, loadModel, renderPortrait,
+    renderer, pass, basePos, built, loadModel, renderPortrait, cam, openCloseUp, closeCloseUp, furniture,
     get selected() {
       return selected;
     },

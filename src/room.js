@@ -398,14 +398,21 @@ const builders = {
   },
 
   poster(_, m, item) {
-    // Плакат в тонкой рамке. Текст и цвета — в data.js (title, lines, color, textColor).
+    // Плакат в тонкой рамке. Картинка — поле image в data.js (пропорции 4:5);
+    // если картинки нет — рисуется текстом (title, lines, color, textColor).
     const g = new THREE.Group();
-    const W = 0.66, H = 0.88, y = item.height || 1.75;
-    const paper = new THREE.Mesh(new THREE.PlaneGeometry(W, H), lambert({ map: tex.poster(item) }));
+    const W = 0.72, H = 0.9, y = item.height || 1.75;
+    const map = item.image ? tex.imagePoster(`${import.meta.env.BASE_URL}${item.image}`) : tex.poster(item);
+    const paper = new THREE.Mesh(new THREE.PlaneGeometry(W, H), lambert({ map }));
     paper.position.set(0, y, 0.025);
     paper.userData.noSnap = true;
     g.add(paper);
     const f = 0.03;
+    // Тёмная подложка под рамкой: рамка дрожит, а бумага нет — в щели видна подложка, а не обои.
+    const backing = new THREE.Mesh(new THREE.PlaneGeometry(W + f * 2, H + f * 2), lambert({ color: '#26252b' })); // свой материал: дрожание включается на материал
+    backing.position.set(0, y, 0.02);
+    backing.userData.noSnap = true;
+    g.add(backing);
     g.add(box(W + f * 2, f, 0.03, m.metalBlack, 0, y + H / 2, 0.015));
     g.add(box(W + f * 2, f, 0.03, m.metalBlack, 0, y - H / 2 - f, 0.015));
     g.add(box(f, H, 0.03, m.metalBlack, -W / 2 - f / 2, y - H / 2, 0.015));
@@ -525,7 +532,7 @@ export function buildRoom(room, furniture) {
       obj.rotation.y = angle;
     }
     obj.name = item.id;
-    obj.userData = { furnitureId: item.id, interactive: Boolean(item.actions) };
+    obj.userData = { furnitureId: item.id, interactive: Boolean(item.actions || item.closeUp) };
     objects[item.id] = obj;
     group.add(obj);
   }

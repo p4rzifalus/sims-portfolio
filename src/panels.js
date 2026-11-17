@@ -53,6 +53,17 @@ export function createPanels(root, { panels: panelTexts, ui: texts, getPortrait 
       }
       body.appendChild(list);
     },
+    // Общая панель книжного шкафа: ссылки из data.js (panels.shelf.links), не из персонажа.
+    shelf(_, body) {
+      const list = el('div', 'links-list');
+      for (const l of panelTexts.shelf?.links || []) {
+        const a = link(l.url, 'link-pill link-row');
+        a.appendChild(el('span', 'link-label', l.label));
+        if (l.note) a.appendChild(el('span', 'link-note', l.note));
+        list.appendChild(a);
+      }
+      body.appendChild(list);
+    },
     about(ch, body) {
       const wrap = el('div', 'about');
       const p = el('div', 'about-portrait');
@@ -66,28 +77,32 @@ export function createPanels(root, { panels: panelTexts, ui: texts, getPortrait 
     },
   };
 
-  function closeCurrent() {
+  // how — почему закрыли: 'replaced' — панель вытеснила панель другого персонажа
+  // (тот продолжает работать без панели); иначе — закрыли крестиком, кнопкой или Esc.
+  function closeCurrent(how) {
     if (!current) return;
     const c = current;
     current = null;
     c.node.remove();
-    c.resolve();
+    c.resolve(how);
   }
 
   window.addEventListener('keydown', (e) => {
     // Если открыто радиальное меню, Esc закрывает только его (см. main.js).
-    if (e.key === 'Escape' && !document.querySelector('.radial-overlay')) closeCurrent();
+    if (e.key === 'Escape' && !document.querySelector('.radial-overlay') && !document.body.classList.contains('closeup')) closeCurrent();
   });
 
   return {
     // Открыть панель kind ('works' | 'links' | 'about') с данными персонажа ch.
-    // Возвращает { closed: Promise, close() }. Новая панель закрывает предыдущую.
+    // Возвращает { closed: Promise, close() }. Новая панель закрывает предыдущую:
+    // её closed выполнится со значением 'replaced'.
     open(kind, ch) {
-      closeCurrent();
+      closeCurrent('replaced');
       const node = el('div', 'panel');
       node.style.setProperty('--accent', ch.color);
       const head = el('div', 'panel-head');
-      head.appendChild(el('div', 'panel-title', typo(`${panelTexts[kind]?.title || kind} — ${ch.name}`)));
+      const title = panelTexts[kind]?.title || kind;
+      head.appendChild(el('div', 'panel-title', panelTexts[kind]?.shared ? title : typo(`${title} — ${ch.name}`)));
       const x = el('button', 'panel-x', '✕');
       x.type = 'button';
       x.title = texts.close;
