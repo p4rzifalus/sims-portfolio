@@ -232,35 +232,114 @@ body {
   font-weight: bold;
   opacity: 0.9;
 }
-.hud-traits {
-  align-self: stretch;
-  min-width: 220px;
-  padding: 8px 12px 10px;
+/* Досье: вкладки сверху, под ними — содержимое открытой вкладки.
+   Размер постоянный, чтобы панель не прыгала при переключении. */
+.hud-dossier {
+  width: 320px;
+  display: flex;
+  flex-direction: column;
+}
+.dossier-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 0 6px;
+}
+.dossier-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 4px 2px 5px;
+  font: inherit;
+  font-size: 12px;
+  white-space: nowrap;
+  font-weight: bold;
+  color: #fff;
+  border: 2px solid var(--ui-blue-light);
+  border-bottom: 0;
+  border-radius: 12px 12px 0 0;
+  background: linear-gradient(180deg, #4d69c4, var(--ui-blue-dark));
+  cursor: pointer;
+  opacity: 0.85;
+}
+.dossier-tab:hover {
+  opacity: 1;
+  filter: brightness(1.15);
+}
+.dossier-tab.active {
+  opacity: 1;
+  color: #1f2f6e;
+  border-color: #fff;
+  background: #dfe9ff;
+  /* вкладка «сливается» с содержимым под ней */
+  margin-bottom: -2px;
+  padding-bottom: 7px;
+  position: relative;
+  z-index: 1;
+}
+.dossier-tab-icon {
+  font-size: 13px;
+}
+.dossier-body {
+  flex: 1;
+  height: 116px;
+  overflow-y: auto;
+  padding: 9px 12px;
   border-radius: 18px;
   background: linear-gradient(180deg, #dfe9ff, #b3c8f5);
   color: #1f2f6e;
   border: 2px solid #fff;
+  box-sizing: border-box;
 }
-.hud-traits-title {
-  font-size: 13px;
-  font-weight: bold;
-  text-align: center;
-  margin-bottom: 6px;
-  opacity: 0.8;
+
+/* Характер: шкалы по 10 делений */
+.scales {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
-.hud-traits-list {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px 10px;
-}
-.trait {
+.scale {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   font-size: 13px;
   font-weight: bold;
 }
-.trait-icon {
+.scale-label {
+  width: 104px;
+  flex: none;
+}
+.scale-cells {
+  display: flex;
+  gap: 3px;
+}
+.cell {
+  width: 15px;
+  height: 14px;
+  border-radius: 4px;
+  background: rgba(31, 47, 110, 0.18);
+  box-shadow: inset 0 1px 2px rgba(31, 47, 110, 0.3);
+}
+.cell.on {
+  background: linear-gradient(180deg, #fff, var(--accent) 55%);
+  box-shadow: 0 1px 0 rgba(31, 47, 110, 0.35);
+}
+
+/* Интересы: значок и слово */
+.icon-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.icon-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: bold;
+}
+.icon-item-icon {
   width: 30px;
   height: 30px;
   flex: none;
@@ -270,6 +349,105 @@ body {
   border-radius: 9px;
   background: #fff;
   box-shadow: 0 2px 0 rgba(31, 47, 110, 0.25);
+}
+
+/* Работа: место и роль */
+.jobs {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.job {
+  padding-left: 9px;
+  border-left: 3px solid var(--accent);
+  line-height: 1.2;
+}
+.job-place {
+  font-size: 13px;
+  font-weight: bold;
+}
+.job-role {
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+/* Отношения: портрет знакомого и дружба */
+.relations {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.relation {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.relation-portrait {
+  width: 72px;
+  height: 72px;
+  flex: none;
+  padding: 0;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 3px var(--other);
+  background: radial-gradient(circle at 50% 35%, #e3edff, #7b98e0 70%);
+  cursor: pointer;
+  transition: transform 0.12s;
+}
+.relation-portrait:hover {
+  transform: scale(1.06);
+}
+.relation-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.relation-name {
+  font-size: 15px;
+  font-weight: bold;
+}
+.relation-score {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: bold;
+}
+.relation-value {
+  font-size: 18px;
+  line-height: 1;
+}
+/* Шкала от −100 до 100: середина — ноль, дружба растёт вправо, вражда — влево */
+.friend-bar {
+  position: relative;
+  height: 12px;
+  border-radius: 6px;
+  background: rgba(31, 47, 110, 0.18);
+  box-shadow: inset 0 1px 2px rgba(31, 47, 110, 0.3);
+  overflow: hidden;
+}
+.friend-bar::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: rgba(31, 47, 110, 0.45);
+}
+.friend-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  background: linear-gradient(180deg, #b9f5a0, #4fb83a);
+}
+.friend-fill.neg {
+  left: auto;
+  right: 50%;
+  background: linear-gradient(180deg, #ffb3a8, #d8413a);
 }
 
 /* ---------- Радиальное меню ---------- */

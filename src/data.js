@@ -72,12 +72,22 @@ export const characters = [
     color: '#e8833a',
     startCell: [3, 4], // где стоит при открытии сайта (номера клеток видны по клавише G)
     startFacing: 'south',
-    traits: [
-      { icon: '🎨', label: 'дизайнер' },
-      { icon: '☕', label: 'кофеман' },
-      { icon: '🌙', label: 'сова' },
-      { icon: '🎮', label: 'геймер' },
+    // Досье в нижней панели (вкладки описаны ниже, в блоке dossier).
+    // характер: сколько делений из 10 закрашено на каждой шкале
+    personality: { expert: 8, social: 7, active: 6, kind: 9, swag: 8 },
+    interests: [
+      { icon: '🖌️', label: 'рисование' },
+      { icon: '💃', label: 'танцы' },
+      { icon: '📚', label: 'книжный дизайн' },
     ],
+    // работа: место и роль, по строке на каждое место
+    jobs: [
+      { place: 'щелочь', role: 'препод курса ПИН' },
+      { place: 'британка', role: 'препод дисциплины «нейросети»' },
+      { place: 'центральный университет', role: 'препод дисциплины «дизайн и разработка с ИИ»' },
+    ],
+    // отношения: who — id другого персонажа, friendship — цифра дружбы от −100 до 100
+    relationships: [{ who: 'p2', friendship: 100 }],
     about:
       'здесь будет короткий рассказ о первом человеке: чем занимается, что любит, как с ним работать.',
     works: [
@@ -101,11 +111,18 @@ export const characters = [
     color: '#4aa3c7',
     startCell: [5, 4],
     startFacing: 'south',
-    traits: [
-      { icon: '💻', label: 'разработчик' },
-      { icon: '🎧', label: 'меломан' },
-      { icon: '🌱', label: 'садовод' },
+    personality: { expert: 9, social: 6, active: 5, kind: 8, swag: 9 },
+    interests: [
+      { icon: '🧠', label: 'психология' },
+      { icon: '🎲', label: 'гейм-дизайн' },
+      { icon: '🎬', label: 'фильмы' },
     ],
+    jobs: [
+      { place: '«далее» (команда сбера)', role: 'senior UX/UI-дизайнер' },
+      { place: 'aic', role: 'ex-ведущий дизайнер' },
+      { place: 'duo sapiens', role: 'ментор' },
+    ],
+    relationships: [{ who: 'p1', friendship: 100 }],
     about:
       'здесь будет короткий рассказ о втором человеке: чем занимается, что любит, как с ним работать.',
     works: [
@@ -120,6 +137,28 @@ export const characters = [
     ],
   },
 ];
+
+// ---------- Досье: вкладки нижней панели ----------
+// Порядок вкладок — как в списке. Первая открыта при загрузке.
+// Данные для вкладок лежат у каждого персонажа: personality, interests, jobs, relationships.
+export const dossier = {
+  tabs: [
+    { id: 'personality', icon: '⭐', label: 'характер' },
+    { id: 'interests', icon: '💡', label: 'интересы' },
+    { id: 'jobs', icon: '💼', label: 'работа' },
+    { id: 'relationships', icon: '💛', label: 'отношения' },
+  ],
+  // Шкалы характера: id совпадает с ключом в personality персонажа.
+  personality: [
+    { id: 'expert', label: 'экспертный' },
+    { id: 'social', label: 'общительный' },
+    { id: 'active', label: 'активный' },
+    { id: 'kind', label: 'добрый' },
+    { id: 'swag', label: 'свеговый' },
+  ],
+  personalityMax: 10, // сколько делений в шкале
+  friendshipLabel: 'дружба', // подпись у цифры дружбы
+};
 
 // ---------- Действия при клике по персонажу ----------
 // Клик по невыбранному персонажу выбирает его, по уже выбранному — открывает это меню.
@@ -394,7 +433,6 @@ export const ui = {
   ps1Off: 'PS1: выкл',
   busy: 'занято',
   cancel: 'отменить',
-  traitsTitle: 'черты', // заголовок над чертами в нижней панели
   walking: 'идёт', // что написано в нижней панели, пока персонаж идёт
   idle: 'свободен', // …и когда он ничем не занят
   close: 'закрыть',

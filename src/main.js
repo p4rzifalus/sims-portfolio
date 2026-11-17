@@ -10,6 +10,7 @@ import {
   characterActions,
   panels as panelTexts,
   welcome,
+  dossier,
 } from './data.js';
 import { typoDeep } from './typo.js';
 import { buildRoom } from './room.js';
@@ -24,7 +25,7 @@ import { performAction, freeSpot } from './actions.js';
 import { showWelcome } from './welcome.js';
 
 // Короткие слова во всех текстах приклеиваем к следующему слову (см. typo.js).
-typoDeep([ui, characterData, characterActions, panelTexts, furniture, welcome]);
+typoDeep([ui, characterData, characterActions, panelTexts, furniture, welcome, dossier]);
 
 // ---------- Настройки вида (не контент, поэтому здесь, а не в data.js) ----------
 const CAMERA_ELEVATION = 30; // наклон камеры, градусы (0 — сбоку, 90 — сверху)
@@ -226,6 +227,7 @@ const occupancy = new Map(); // занятые места: 'chair' → перс�
 const hud = createUI({
   characters: characterData,
   texts: ui,
+  dossier,
   onSelect: (id) => select(id),
   onCancel: () => {
     if (!selected) return;
