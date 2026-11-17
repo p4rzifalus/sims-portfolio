@@ -21,6 +21,9 @@ body {
   inset: 0;
   display: block;
 }
+#app canvas {
+  touch-action: none; /* на телефоне касание — это клик, а не прокрутка или масштаб */
+}
 
 /* ---------- Кнопки-«таблетки» ---------- */
 .pill {
@@ -150,7 +153,7 @@ body {
     inset 0 -3px 0 rgba(0, 0, 0, 0.12);
 }
 /* Перемычка к предыдущему блоку */
-.hud-block + .hud-block::before {
+.hud-block ~ .hud-block::before {
   content: '';
   position: absolute;
   left: -14px;
@@ -457,6 +460,10 @@ body {
   margin-top: 2px;
 }
 
+.hud-mtabs {
+  display: none; /* только на телефоне */
+}
+
 /* Узкие окна: панель целиком уменьшается */
 @media (max-width: 1000px) {
   .hud {
@@ -466,6 +473,145 @@ body {
 @media (max-width: 800px) {
   .hud {
     scale: 0.66;
+  }
+}
+
+/* ---------- Телефон ----------
+   Панель на всю ширину: сверху портрет с именем, интересами и часами,
+   под ним вкладки «работа | потребности» и один блок с содержимым. */
+@media (max-width: 640px) {
+  .hud {
+    scale: none;
+    left: 6px;
+    right: 6px;
+    bottom: 6px;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0;
+    align-items: stretch;
+  }
+  .hud-block ~ .hud-block::before {
+    display: none;
+  }
+  .hud-me {
+    display: grid;
+    grid-template-columns: 68px auto 1fr auto;
+    grid-template-areas:
+      'p n n a'
+      'p i c a';
+    align-items: center;
+    gap: 6px 10px;
+    padding: 8px 10px;
+    border-radius: 22px;
+    margin-bottom: 8px;
+  }
+  .hud-me-row {
+    display: contents;
+  }
+  .hud-portrait {
+    grid-area: p;
+    width: 64px;
+    height: 64px;
+    border-radius: 16px;
+  }
+  .hud-name {
+    grid-area: n;
+    font-size: 16px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .hud-interests {
+    grid-area: i;
+  }
+  .interest {
+    width: 32px;
+    height: 32px;
+    font-size: 17px;
+  }
+  .hud-clock {
+    grid-area: c;
+    justify-self: start;
+    padding: 2px 10px;
+  }
+  .hud-clock .date {
+    display: none;
+  }
+  .hud-action-col {
+    grid-area: a;
+    width: 58px;
+    padding-top: 6px;
+  }
+  .hud-action {
+    width: 42px;
+    height: 42px;
+    font-size: 22px;
+  }
+
+  /* Вкладки — как корешки папок над блоком */
+  .hud-mtabs {
+    display: flex;
+    gap: 4px;
+    padding: 0 16px;
+  }
+  .hud-mtabs button {
+    flex: 1;
+    padding: 6px 4px 8px;
+    font: inherit;
+    font-size: 14px;
+    font-weight: bold;
+    color: #fff;
+    border: 2px solid var(--hud-line);
+    border-bottom: 0;
+    border-radius: 14px 14px 0 0;
+    background: linear-gradient(180deg, #7d88d4, #5d68b8);
+    text-shadow: 0 1px 0 var(--hud-line);
+    cursor: pointer;
+  }
+  .hud-mtabs button.active {
+    color: var(--hud-ink);
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.45);
+    background: #a3acec;
+    /* корешок сливается с блоком под ним */
+    position: relative;
+    z-index: 1;
+    margin-bottom: -2px;
+    padding-bottom: 10px;
+  }
+  .hud-work,
+  .hud-side {
+    width: auto;
+    height: 158px;
+  }
+  .hud[data-mtab='work'] .hud-side,
+  .hud[data-mtab='side'] .hud-work {
+    display: none;
+  }
+  .hud-work .hud-title,
+  .hud-side .side-title {
+    display: none; /* название уже на вкладке */
+  }
+  .side-content {
+    width: auto;
+    flex: 1;
+  }
+
+  /* Остальной интерфейс */
+  .portraits {
+    flex-direction: row;
+    top: 8px;
+    left: 8px;
+    gap: 8px;
+    padding: 6px;
+    border-radius: 18px;
+  }
+  .portrait {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+  }
+  #corner {
+    top: 8px;
+    right: 8px;
   }
 }
 
@@ -861,4 +1007,22 @@ body.closeup #ui .closeup-bar {
 }
 .closeup-link[hidden] {
   display: none;
+}
+
+/* ---------- Телефон: письмо и панели на всю ширину ----------
+   (здесь, в конце файла, чтобы перебить обычные правила .notice и .panel) */
+@media (max-width: 640px) {
+  .notice {
+    top: 84px;
+    left: 8px;
+    right: 8px;
+    width: auto;
+  }
+  .panel {
+    top: 80px;
+    left: 8px;
+    right: 8px;
+    width: auto;
+    max-height: calc(100vh - 80px - 320px); /* над нижней панелью */
+  }
 }

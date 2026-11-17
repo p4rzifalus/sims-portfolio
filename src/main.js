@@ -36,6 +36,11 @@ const SCREEN_MARGINS = { left: 0.11, right: 0.04, top: 0.05, bottom: 0.24 };
 // Крупный план предмета на стене (плакат): интерфейс спрятан, снизу — только кнопки.
 const CLOSEUP_MARGINS = { left: 0.06, right: 0.06, top: 0.07, bottom: 0.17 };
 const CLOSEUP_TIME = 0.9; // сколько секунд камера едет к стене и обратно
+// Телефон (узкий экран, та же граница, что в style.css): комната крупнее — целиком
+// влезает по высоте, а по бокам немного обрезается. MOBILE_ZOOM — во сколько раз
+// комната шире экрана (стол и шкаф для одежды стоят так, чтобы при 1.3 влезать в кадр).
+const MOBILE = window.matchMedia('(max-width: 640px)');
+const MOBILE_ZOOM = 1.3;
 
 // ---------- Рендерер ----------
 // Сглаживание краёв делает сам проход PS1Pass (в режиме без PS1), поэтому здесь оно не нужно.
@@ -75,7 +80,8 @@ const camUp = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 1);
 // «Кадр» камеры: куда смотрит (center), с какой стороны (quat) и какая рамка вокруг
 // центра (frame: left/right/top/bottom в мировых единицах). Между кадрами камера едет плавно.
 // Рамка подбирается так, чтобы точки corners целиком влезли в свободную часть экрана.
-function makeShot(center, quat, corners, margins, aspect) {
+// zoom > 1 — кадр крупнее: по высоте всё влезает, по ширине может обрезаться.
+function makeShot(center, quat, corners, margins, aspect, zoom = 1) {
   const inv = quat.clone().invert();
   const v = new THREE.Vector3();
   let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
@@ -87,7 +93,7 @@ function makeShot(center, quat, corners, margins, aspect) {
   const m = margins;
   const uw = 1 - m.left - m.right;
   const uh = 1 - m.top - m.bottom;
-  const F = Math.max((maxY - minY) / uh, (maxX - minX) / (aspect * uw)); // высота кадра в мировых единицах
+  const F = Math.max((maxY - minY) / uh, (maxX - minX) / (aspect * uw) / zoom); // высота кадра в мировых единицах
   const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
   const left = cx - (m.left + uw / 2) * aspect * F;
   const bottom = cy - (m.bottom + uh / 2) * F;
@@ -103,7 +109,15 @@ function boxCorners(box) {
 // Вся комната целиком (обычный вид).
 const roomQuat = camera.quaternion.clone();
 const roomBox = new THREE.Box3(new THREE.Vector3(-0.15, -0.3, -0.15), new THREE.Vector3(room.columns + 0.15, room.wallHeight, room.rows + 0.15));
-const roomShot = (aspect) => makeShot(target, roomQuat, boxCorners(roomBox), SCREEN_MARGINS, aspect);
+function roomShot(aspect) {
+  if (!MOBILE.matches) return makeShot(target, roomQuat, boxCorners(roomBox), SCREEN_MARGINS, aspect);
+  // На телефоне свободная часть экрана — между портретами сверху и панелью снизу.
+  const h = window.innerHeight;
+  const top = document.querySelector('.portraits')?.getBoundingClientRect().bottom ?? 0;
+  const hud = document.querySelector('.hud')?.getBoundingClientRect().height ?? h * 0.35;
+  const margins = { left: 0, right: 0, top: (top + 8) / h, bottom: (hud + 18) / h };
+  return makeShot(target, roomQuat, boxCorners(roomBox), margins, aspect, MOBILE_ZOOM);
+}
 
 // Предмет на стене прямо перед камерой: камера смотрит перпендикулярно стене.
 function closeUpShot(item, aspect) {
@@ -235,6 +249,7 @@ const hud = createUI({
     else if (selected.isWalking) selected.stop();
   },
 });
+resize(); // на телефоне кадр зависит от высоты нижней панели — она только что появилась
 const uiRoot = document.getElementById('ui');
 const menu = createRadialMenu(uiRoot, ui);
 const panels = createPanels(uiRoot, { panels: panelTexts, ui, getPortrait: (id) => portraits[id] });
@@ -300,7 +315,7 @@ const mouse = { x: 0, y: 0, inside: false };
 canvas.addEventListener('pointermove', (e) => {
   mouse.x = e.clientX;
   mouse.y = e.clientY;
-  mouse.inside = true;
+  mouse.inside = e.pointerType === 'mouse'; // от пальца обводка не остаётся висеть
 });
 canvas.addEventListener('pointerleave', () => (mouse.inside = false));
 canvas.addEventListener('contextmenu', (e) => e.preventDefault()); // правый клик не открывает меню браузера

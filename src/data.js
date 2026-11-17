@@ -244,7 +244,7 @@ export const furniture = [
   {
     id: 'desk',
     type: 'designDesk',
-    cells: [[4, 0], [5, 0], [6, 0]],
+    cells: [[3, 0], [4, 0], [5, 0]], // ближе к центру — на телефоне влезает в кадр
     blocks: true,
     facing: 'south',
   },
@@ -252,7 +252,7 @@ export const furniture = [
     id: 'macbook-1',
     type: 'macbook',
     name: 'макбук',
-    cells: [[4, 0]], // стоит на столе
+    cells: [[3, 0]], // стоит на столе
     onTopOf: 'desk',
     blocks: false,
     facing: 'south',
@@ -262,7 +262,7 @@ export const furniture = [
         id: 'show-works',
         label: 'показать работы',
         icon: '🖼️',
-        goTo: [4, 2], // клетка позади стула
+        goTo: [3, 2], // клетка позади стула
         face: 'north',
         animation: 'sit',
         sitOn: 'chair-1',
@@ -274,7 +274,7 @@ export const furniture = [
         id: 'show-links',
         label: 'ссылки',
         icon: '🔗',
-        goTo: [4, 2],
+        goTo: [3, 2],
         face: 'north',
         animation: 'sit',
         sitOn: 'chair-1',
@@ -288,7 +288,7 @@ export const furniture = [
     id: 'macbook-2',
     type: 'macbook',
     name: 'макбук',
-    cells: [[6, 0]],
+    cells: [[5, 0]],
     onTopOf: 'desk',
     blocks: false,
     facing: 'south',
@@ -298,7 +298,7 @@ export const furniture = [
         id: 'show-works',
         label: 'показать работы',
         icon: '🖼️',
-        goTo: [6, 2],
+        goTo: [5, 2],
         face: 'north',
         animation: 'sit',
         sitOn: 'chair-2',
@@ -310,7 +310,7 @@ export const furniture = [
         id: 'show-links',
         label: 'ссылки',
         icon: '🔗',
-        goTo: [6, 2],
+        goTo: [5, 2],
         face: 'north',
         animation: 'sit',
         sitOn: 'chair-2',
@@ -323,7 +323,7 @@ export const furniture = [
   {
     id: 'chair-1',
     type: 'designChair',
-    cells: [[4, 1]],
+    cells: [[3, 1]],
     blocks: false, // на эту клетку персонаж встаёт, чтобы сесть
     facing: 'north',
     color: '#efece6',
@@ -331,7 +331,7 @@ export const furniture = [
   {
     id: 'chair-2',
     type: 'designChair',
-    cells: [[6, 1]],
+    cells: [[5, 1]],
     blocks: false,
     facing: 'north',
     color: '#e8833a',
@@ -412,7 +412,7 @@ export const furniture = [
   {
     id: 'wardrobe',
     type: 'wardrobe',
-    cells: [[0, 5], [0, 6]],
+    cells: [[0, 4]], // одна клетка — одна дверь; рядом с диваном, чтобы на телефоне влезал в кадр
     blocks: true,
     facing: 'east',
     color: '#cdb28a',

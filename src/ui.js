@@ -1,6 +1,7 @@
 // Интерфейс поверх 3D: колонка портретов слева и панель выбранного персонажа снизу.
 // Нижняя панель — три блока, как в The Sims 2: портрет (под ним интересы и часы),
-// работа и правый блок с потребностями.
+// работа и правый блок с потребностями. На телефоне портрет сверху, а работа и
+// потребности — в одном блоке под ним, переключаются вкладками (.hud-mtabs).
 // Все тексты берутся из data.js. Здесь только HTML и реакция на клики.
 
 function el(tag, className, text) {
@@ -46,6 +47,10 @@ export function createUI({ characters, texts, dossier, onSelect, onCancel }) {
       <div class="hud-interests"></div>
       <div class="hud-clock"><span class="date"></span><span class="time"></span></div>
     </div>
+    <div class="hud-mtabs">
+      <button type="button" data-show="work"></button>
+      <button type="button" data-show="side"></button>
+    </div>
     <div class="hud-block hud-work">
       <div class="hud-title"></div>
       <div class="hud-well jobs"></div>
@@ -74,6 +79,17 @@ export function createUI({ characters, texts, dossier, onSelect, onCancel }) {
   const timeEl = $('.hud-clock .time');
   const dateEl = $('.hud-clock .date');
   $('.hud-work .hud-title').textContent = dossier.jobsTitle;
+
+  // Вкладки на телефоне: какой из двух блоков виден.
+  const mtabs = panel.querySelectorAll('.hud-mtabs button');
+  mtabs[0].textContent = dossier.jobsTitle;
+  mtabs[1].textContent = dossier.tabs[0].label;
+  function showMobileTab(name) {
+    panel.dataset.mtab = name;
+    for (const b of mtabs) b.classList.toggle('active', b.dataset.show === name);
+  }
+  for (const b of mtabs) b.addEventListener('click', () => showMobileTab(b.dataset.show));
+  showMobileTab('work');
   cancelBtn.title = texts.cancel;
   cancelBtn.textContent = '✕';
   cancelBtn.addEventListener('click', () => onCancel());

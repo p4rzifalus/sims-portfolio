@@ -333,7 +333,7 @@ const builders = {
   },
 
   wardrobe({ w, d }, m, item) {
-    // Шкаф для одежды: две двери с ручками.
+    // Шкаф для одежды: на две клетки — две двери с ручками, на одну — одна дверь.
     const g = new THREE.Group();
     const W = w - 0.12, D = 0.6, H = 2.15;
     const zc = -d / 2 + D / 2 + 0.03;
@@ -345,6 +345,11 @@ const builders = {
     }
     g.add(box(W, H - 0.08, D, body, 0, 0.08, zc));
     g.add(box(W + 0.04, 0.05, D + 0.04, body, 0, H - 0.01, zc)); // карниз
+    if (w < 1.5) {
+      g.add(box(W - 0.06, H - 0.22, 0.02, door, 0, 0.15, zc + D / 2));
+      g.add(box(0.02, 0.32, 0.03, m.metalBlack, W / 2 - 0.12, 1.0, zc + D / 2 + 0.02)); // ручка у края
+      return g;
+    }
     const dw = W / 2 - 0.03;
     for (const sx of [-1, 1]) {
       const x = sx * (dw / 2 + 0.01);
