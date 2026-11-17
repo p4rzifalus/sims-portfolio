@@ -343,7 +343,31 @@ body {
   opacity: 0.8;
 }
 
-/* Правый блок: значки вкладок (если их больше одной) и содержимое */
+/* «пара слов»: текст от лица персонажа на светлой «бумаге» */
+.hud-note {
+  width: 320px;
+  height: 230px; /* как блок с портретом: по краям высокие блоки, в середине низкие */
+  display: flex;
+  flex-direction: column;
+  border-radius: 28px 28px 22px 22px;
+}
+.note-text {
+  padding: 7px 11px;
+  background: linear-gradient(180deg, #f6f7ff, #dde2fa);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.25);
+  font-size: 13px;
+  line-height: 1.35;
+  scrollbar-width: thin;
+  scrollbar-color: #8b95dc transparent;
+}
+.note-text p {
+  margin: 0 0 6px;
+}
+.note-text p:last-child {
+  margin-bottom: 0;
+}
+
+/* Блок потребностей: значки вкладок (если их больше одной) и содержимое */
 .hud-side {
   display: flex;
   gap: 8px;
@@ -464,15 +488,20 @@ body {
   display: none; /* только на телефоне */
 }
 
-/* Узкие окна: панель целиком уменьшается */
-@media (max-width: 1000px) {
+/* Узкие окна: панель (~1220 px шириной) целиком уменьшается */
+@media (max-width: 1240px) {
   .hud {
-    scale: 0.8;
+    scale: 0.82;
   }
 }
-@media (max-width: 800px) {
+@media (max-width: 1015px) {
   .hud {
-    scale: 0.66;
+    scale: 0.68;
+  }
+}
+@media (max-width: 845px) {
+  .hud {
+    scale: 0.5;
   }
 }
 
@@ -578,16 +607,19 @@ body {
     padding-bottom: 10px;
   }
   .hud-work,
-  .hud-side {
+  .hud-side,
+  .hud-note {
     width: auto;
     height: 158px;
   }
-  .hud[data-mtab='work'] .hud-side,
-  .hud[data-mtab='side'] .hud-work {
+  .hud:not([data-mtab='side']) .hud-side,
+  .hud:not([data-mtab='work']) .hud-work,
+  .hud:not([data-mtab='note']) .hud-note {
     display: none;
   }
   .hud-work .hud-title,
-  .hud-side .side-title {
+  .hud-side .side-title,
+  .hud-note .hud-title {
     display: none; /* название уже на вкладке */
   }
   .side-content {

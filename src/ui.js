@@ -47,20 +47,21 @@ export function createUI({ characters, texts, dossier, onSelect, onCancel }) {
       <div class="hud-interests"></div>
       <div class="hud-clock"><span class="date"></span><span class="time"></span></div>
     </div>
-    <div class="hud-mtabs">
-      <button type="button" data-show="work"></button>
-      <button type="button" data-show="side"></button>
-    </div>
-    <div class="hud-block hud-work">
-      <div class="hud-title"></div>
-      <div class="hud-well jobs"></div>
-    </div>
+    <div class="hud-mtabs"></div>
     <div class="hud-block hud-side">
       <div class="side-tabs"></div>
       <div class="side-content">
         <div class="hud-title side-title"></div>
         <div class="side-body"></div>
       </div>
+    </div>
+    <div class="hud-block hud-work">
+      <div class="hud-title"></div>
+      <div class="hud-well jobs"></div>
+    </div>
+    <div class="hud-block hud-note">
+      <div class="hud-title"></div>
+      <div class="hud-well note-text"></div>
     </div>`;
   root.appendChild(panel);
 
@@ -73,23 +74,33 @@ export function createUI({ characters, texts, dossier, onSelect, onCancel }) {
   const cancelBtn = $('.cancel');
   const interestsEl = $('.hud-interests');
   const jobsEl = $('.jobs');
+  const noteEl = $('.note-text');
   const tabsEl = $('.side-tabs');
   const sideTitle = $('.side-title');
   const sideBody = $('.side-body');
   const timeEl = $('.hud-clock .time');
   const dateEl = $('.hud-clock .date');
   $('.hud-work .hud-title').textContent = dossier.jobsTitle;
+  $('.hud-note .hud-title').textContent = dossier.noteTitle;
 
-  // Вкладки на телефоне: какой из двух блоков виден.
-  const mtabs = panel.querySelectorAll('.hud-mtabs button');
-  mtabs[0].textContent = dossier.jobsTitle;
-  mtabs[1].textContent = dossier.tabs[0].label;
+  // Вкладки на телефоне: какой из трёх блоков виден (в том же порядке, что и на компьютере).
+  const mtabs = [
+    ['side', dossier.tabs[0].label],
+    ['work', dossier.jobsTitle],
+    ['note', dossier.noteTitle],
+  ].map(([show, label]) => {
+    const b = el('button', '', label);
+    b.type = 'button';
+    b.dataset.show = show;
+    b.addEventListener('click', () => showMobileTab(show));
+    $('.hud-mtabs').appendChild(b);
+    return b;
+  });
   function showMobileTab(name) {
     panel.dataset.mtab = name;
     for (const b of mtabs) b.classList.toggle('active', b.dataset.show === name);
   }
-  for (const b of mtabs) b.addEventListener('click', () => showMobileTab(b.dataset.show));
-  showMobileTab('work');
+  showMobileTab('side');
   cancelBtn.title = texts.cancel;
   cancelBtn.textContent = '✕';
   cancelBtn.addEventListener('click', () => onCancel());
@@ -206,6 +217,10 @@ export function createUI({ characters, texts, dossier, onSelect, onCancel }) {
         return item;
       }),
     );
+    // «пара слов»: строка или список абзацев
+    const note = Array.isArray(d.note) ? d.note : d.note ? [d.note] : [];
+    noteEl.replaceChildren(...note.map((line) => el('p', '', line)));
+    noteEl.scrollTop = 0;
     renderSide();
   }
 
