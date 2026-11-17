@@ -72,9 +72,11 @@ export const characters = [
     color: '#e8833a',
     startCell: [3, 4], // где стоит при открытии сайта (номера клеток видны по клавише G)
     startFacing: 'south',
-    // Досье в нижней панели (вкладки описаны ниже, в блоке dossier).
-    // характер: сколько делений из 10 закрашено на каждой шкале
-    personality: { expert: 8, social: 7, active: 6, kind: 9, swag: 8 },
+    // Досье в нижней панели (подписи и порядок — ниже, в блоке dossier).
+    // потребности: насколько заполнена каждая шкала, от 0 до 10
+    needs: { hunger: 6, comfort: 8, energy: 4, fun: 9, social: 8, environment: 10 },
+    // интересы: значки под портретом; подпись видна при наведении (на телефоне — по нажатию).
+    // Можно добавить description: '…' — появится под подписью.
     interests: [
       { icon: '🖌️', label: 'рисование' },
       { icon: '💃', label: 'танцы' },
@@ -111,7 +113,7 @@ export const characters = [
     color: '#4aa3c7',
     startCell: [5, 4],
     startFacing: 'south',
-    personality: { expert: 9, social: 6, active: 5, kind: 8, swag: 9 },
+    needs: { hunger: 5, comfort: 7, energy: 6, fun: 8, social: 6, environment: 10 },
     interests: [
       { icon: '🧠', label: 'психология' },
       { icon: '🎲', label: 'гейм-дизайн' },
@@ -138,25 +140,28 @@ export const characters = [
   },
 ];
 
-// ---------- Досье: вкладки нижней панели ----------
-// Порядок вкладок — как в списке. Первая открыта при загрузке.
-// Данные для вкладок лежат у каждого персонажа: personality, interests, jobs, relationships.
+// ---------- Досье: нижняя панель ----------
+// Панель из трёх блоков: портрет (под ним интересы и часы), работа, справа — вкладки.
+// Данные лежат у каждого персонажа: needs, interests, jobs, relationships.
 export const dossier = {
+  jobsTitle: 'работа', // заголовок среднего блока
+  // Вкладки правого блока (переключаются значками слева от него). Первая открыта при загрузке.
   tabs: [
-    { id: 'personality', icon: '⭐', label: 'характер' },
-    { id: 'interests', icon: '💡', label: 'интересы' },
-    { id: 'jobs', icon: '💼', label: 'работа' },
+    { id: 'needs', icon: '🍎', label: 'потребности' },
     { id: 'relationships', icon: '💛', label: 'отношения' },
   ],
-  // Шкалы характера: id совпадает с ключом в personality персонажа.
-  personality: [
-    { id: 'expert', label: 'экспертный' },
-    { id: 'social', label: 'общительный' },
-    { id: 'active', label: 'активный' },
-    { id: 'kind', label: 'добрый' },
-    { id: 'swag', label: 'свеговый' },
+  // Шкалы потребностей: id совпадает с ключом в needs персонажа.
+  // Первая половина — левый столбец, вторая — правый.
+  needs: [
+    { id: 'hunger', label: 'голод' },
+    { id: 'comfort', label: 'комфорт' },
+    { id: 'energy', label: 'бодрость' },
+    { id: 'fun', label: 'веселье' },
+    { id: 'social', label: 'общение' },
+    { id: 'environment', label: 'обстановка' },
   ],
-  personalityMax: 10, // сколько делений в шкале
+  needsMax: 10, // значение полной шкалы
+  moodLabel: 'настроение', // подсказка у столбика рядом с потребностями (среднее всех шкал)
   friendshipLabel: 'дружба', // подпись у цифры дружбы
 };
 

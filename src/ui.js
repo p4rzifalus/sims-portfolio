@@ -1,4 +1,6 @@
 // Интерфейс поверх 3D: колонка портретов слева и панель выбранного персонажа снизу.
+// Нижняя панель — три блока, как в The Sims 2: портрет (под ним интересы и часы),
+// работа и правый блок с вкладками (потребности, отношения).
 // Все тексты берутся из data.js. Здесь только HTML и реакция на клики.
 
 function el(tag, className, text) {
@@ -29,23 +31,32 @@ export function createUI({ characters, texts, dossier, onSelect, onCancel }) {
   // ---------- Нижняя панель ----------
   const panel = el('div', 'hud');
   panel.innerHTML = `
-    <div class="hud-who">
-      <div class="hud-portrait"><img alt=""></div>
-      <div class="hud-clock"><span class="time"></span><span class="date"></span></div>
-    </div>
-    <div class="hud-info">
+    <div class="hud-block hud-me">
       <div class="hud-name"></div>
-      <div class="hud-action-row">
-        <div class="hud-action">
-          <span class="icon"></span>
-          <button class="cancel" type="button"></button>
+      <div class="hud-me-row">
+        <div class="hud-portrait"><img alt=""></div>
+        <div class="hud-action-col">
+          <div class="hud-action">
+            <span class="icon"></span>
+            <button class="cancel" type="button"></button>
+          </div>
+          <div class="hud-action-label"></div>
         </div>
-        <div class="hud-action-label"></div>
       </div>
+      <div class="hud-interests"></div>
+      <div class="hud-clock"><span class="date"></span><span class="time"></span></div>
     </div>
-    <div class="hud-dossier">
-      <div class="dossier-tabs"></div>
-      <div class="dossier-body"></div>
+    <div class="hud-block hud-work">
+      <div class="hud-title"></div>
+      <div class="hud-well jobs"></div>
+    </div>
+    <div class="hud-block hud-side">
+      <div class="side-tabs"></div>
+      <div class="mood"><span class="mood-fill"></span></div>
+      <div class="side-content">
+        <div class="hud-title side-title"></div>
+        <div class="side-body"></div>
+      </div>
     </div>`;
   root.appendChild(panel);
 
@@ -56,10 +67,16 @@ export function createUI({ characters, texts, dossier, onSelect, onCancel }) {
   const actionIcon = $('.hud-action .icon');
   const actionLabel = $('.hud-action-label');
   const cancelBtn = $('.cancel');
-  const tabsEl = $('.dossier-tabs');
-  const body = $('.dossier-body');
+  const interestsEl = $('.hud-interests');
+  const jobsEl = $('.jobs');
+  const tabsEl = $('.side-tabs');
+  const sideTitle = $('.side-title');
+  const sideBody = $('.side-body');
+  const moodEl = $('.mood');
+  const moodFill = $('.mood-fill');
   const timeEl = $('.hud-clock .time');
   const dateEl = $('.hud-clock .date');
+  $('.hud-work .hud-title').textContent = dossier.jobsTitle;
   cancelBtn.title = texts.cancel;
   cancelBtn.textContent = '✕';
   cancelBtn.addEventListener('click', () => onCancel());
@@ -69,62 +86,86 @@ export function createUI({ characters, texts, dossier, onSelect, onCancel }) {
   let selectedData = null;
   let lastActivity = undefined;
 
-  // ---------- Досье: вкладки ----------
+  // ---------- Подсказка ----------
+  // Мышью — при наведении, пальцем — по нажатию (повторное нажатие или нажатие мимо прячет).
+  const tip = el('div', 'hud-tip');
+  root.appendChild(tip);
+  let tipOwner = null;
+
+  function showTip(owner) {
+    const { tipTitle, tipText } = owner.dataset;
+    tip.replaceChildren(el('div', 'hud-tip-title', tipTitle));
+    if (tipText) tip.appendChild(el('div', 'hud-tip-text', tipText));
+    tip.classList.add('visible');
+    tipOwner = owner;
+    // Над значком, по центру, не вылезая за края экрана.
+    const r = owner.getBoundingClientRect();
+    const w = tip.offsetWidth;
+    const h = tip.offsetHeight;
+    const x = Math.max(8, Math.min(window.innerWidth - w - 8, r.left + r.width / 2 - w / 2));
+    tip.style.left = `${x}px`;
+    tip.style.top = `${Math.max(8, r.top - h - 10)}px`;
+  }
+  function hideTip() {
+    tip.classList.remove('visible');
+    tipOwner = null;
+  }
+  function withTip(node, title, text) {
+    node.dataset.tipTitle = title;
+    if (text) node.dataset.tipText = text;
+    node.addEventListener('pointerenter', (e) => {
+      if (e.pointerType === 'mouse') showTip(node);
+    });
+    node.addEventListener('pointerleave', (e) => {
+      if (e.pointerType === 'mouse' && tipOwner === node) hideTip();
+    });
+    node.addEventListener('click', (e) => {
+      if (e.pointerType === 'mouse') return; // мышью подсказка уже видна
+      if (tipOwner === node) hideTip();
+      else showTip(node);
+    });
+    return node;
+  }
+  document.addEventListener('pointerdown', (e) => {
+    if (tipOwner && !tipOwner.contains(e.target)) hideTip();
+  });
+
+  // ---------- Правый блок: вкладки ----------
   let tab = dossier.tabs[0].id; // открытая вкладка не меняется при смене персонажа
   const tabButtons = {};
   for (const t of dossier.tabs) {
-    const b = el('button', 'dossier-tab');
+    const b = el('button', 'side-tab', t.icon);
     b.type = 'button';
-    b.appendChild(el('span', 'dossier-tab-icon', t.icon));
-    b.appendChild(el('span', 'dossier-tab-label', t.label));
+    b.setAttribute('aria-label', t.label);
+    withTip(b, t.label);
     b.addEventListener('click', () => {
       tab = t.id;
-      renderDossier();
+      renderSide();
     });
     tabsEl.appendChild(b);
     tabButtons[t.id] = b;
   }
 
-  // Значок и подпись (интересы).
-  function iconItem({ icon, label }) {
-    const item = el('div', 'icon-item');
-    item.appendChild(el('span', 'icon-item-icon', icon));
-    item.appendChild(el('span', 'icon-item-label', label));
-    return item;
-  }
+  // Доля от 0 до 1 → цвет шкалы, как в The Sims: зелёный, жёлтый, красный.
+  const level = (k) => (k >= 0.6 ? 'good' : k >= 0.3 ? 'mid' : 'low');
 
   const views = {
-    // 5 шкал по 10 делений
-    personality(d) {
-      const list = el('div', 'scales');
-      for (const s of dossier.personality) {
-        const row = el('div', 'scale');
-        row.appendChild(el('span', 'scale-label', s.label));
-        const cells = el('span', 'scale-cells');
-        const value = (d.personality && d.personality[s.id]) || 0;
-        for (let i = 0; i < dossier.personalityMax; i++) {
-          cells.appendChild(el('span', i < value ? 'cell on' : 'cell'));
-        }
-        row.appendChild(cells);
-        list.appendChild(row);
+    // Две колонки шкал: подпись над полоской.
+    needs(d) {
+      const grid = el('div', 'needs');
+      grid.style.gridTemplateRows = `repeat(${Math.ceil(dossier.needs.length / 2)}, auto)`; // половина слева, половина справа
+      for (const n of dossier.needs) {
+        const k = Math.max(0, Math.min(1, ((d.needs && d.needs[n.id]) || 0) / dossier.needsMax));
+        const item = el('div', 'need');
+        item.appendChild(el('div', 'need-label', n.label));
+        const bar = el('div', 'need-bar');
+        const fill = el('span', `need-fill ${level(k)}`);
+        fill.style.width = `${k * 100}%`;
+        bar.appendChild(fill);
+        item.appendChild(bar);
+        grid.appendChild(item);
       }
-      return list;
-    },
-    interests(d) {
-      const list = el('div', 'icon-list');
-      list.append(...(d.interests || []).map(iconItem));
-      return list;
-    },
-    // «место — роль», место крупнее, роль под ним
-    jobs(d) {
-      const list = el('div', 'jobs');
-      for (const j of d.jobs || []) {
-        const item = el('div', 'job');
-        item.appendChild(el('div', 'job-place', j.place));
-        item.appendChild(el('div', 'job-role', j.role));
-        list.appendChild(item);
-      }
-      return list;
+      return grid;
     },
     // Портрет знакомого (клик — выбрать его) и цифра дружбы со шкалой от −100 до 100.
     relationships(d) {
@@ -163,9 +204,40 @@ export function createUI({ characters, texts, dossier, onSelect, onCancel }) {
     },
   };
 
-  function renderDossier() {
+  function renderSide() {
     for (const [id, b] of Object.entries(tabButtons)) b.classList.toggle('active', id === tab);
-    body.replaceChildren(selectedData ? views[tab](selectedData) : '');
+    sideTitle.textContent = dossier.tabs.find((t) => t.id === tab).label;
+    sideBody.replaceChildren(selectedData ? views[tab](selectedData) : '');
+  }
+
+  // Столбик настроения — среднее всех потребностей.
+  function renderMood(d) {
+    const values = dossier.needs.map((n) => (d.needs && d.needs[n.id]) || 0);
+    const k = values.reduce((a, b) => a + b, 0) / (values.length * dossier.needsMax || 1);
+    moodFill.style.height = `${Math.max(0, Math.min(1, k)) * 100}%`;
+    moodFill.className = `mood-fill ${level(k)}`;
+  }
+  withTip(moodEl, dossier.moodLabel);
+
+  function renderDossier(d) {
+    interestsEl.replaceChildren(
+      ...(d.interests || []).map((it) => {
+        const b = el('button', 'interest', it.icon);
+        b.type = 'button';
+        b.setAttribute('aria-label', it.label);
+        return withTip(b, it.label, it.description);
+      }),
+    );
+    jobsEl.replaceChildren(
+      ...(d.jobs || []).map((j) => {
+        const item = el('div', 'job');
+        item.appendChild(el('div', 'job-place', j.place));
+        item.appendChild(el('div', 'job-role', j.role));
+        return item;
+      }),
+    );
+    renderMood(d);
+    renderSide();
   }
 
   // ---------- Часы ----------
@@ -186,17 +258,18 @@ export function createUI({ characters, texts, dossier, onSelect, onCancel }) {
       portraits[id] = url;
       portraitButtons[id].querySelector('img').src = url;
       if (id === selectedId) bigPortrait.src = url;
-      if (tab === 'relationships') renderDossier(); // портреты знакомых появляются после загрузки
+      if (tab === 'relationships') renderSide(); // портреты знакомых появляются после загрузки
     },
 
     setSelected(data) {
       selectedId = data.id;
+      selectedData = data;
+      hideTip();
       for (const [id, b] of Object.entries(portraitButtons)) b.classList.toggle('selected', id === data.id);
       panel.style.setProperty('--accent', data.color);
       bigPortrait.src = portraits[data.id] || '';
       nameEl.textContent = data.name;
-      selectedData = data;
-      renderDossier();
+      renderDossier(data);
       lastActivity = undefined;
     },
 

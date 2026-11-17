@@ -121,90 +121,114 @@ body {
   box-shadow: 0 0 0 3px var(--accent), 0 0 18px 4px var(--accent);
 }
 
-/* Нижняя панель */
+/* ---------- Нижняя панель ----------
+   Три блока по мотивам The Sims 2: портрет (выше остальных), работа и правый блок
+   с вкладками. Блоки соединены перемычками — панель обтекает содержимое. */
 .hud {
   --accent: #fff;
+  --hud-line: #2b2f6b; /* тёмная обводка */
+  --hud-ink: #1d2366; /* тёмный текст */
+  --hud-well: #4c55a0; /* утопленные области */
   position: absolute;
-  left: 0;
-  bottom: 0;
+  left: 8px;
+  bottom: 8px;
   display: flex;
-  align-items: stretch;
-  gap: 14px;
-  padding: 14px 18px 12px 14px;
-  border-top-right-radius: 34px;
-  background: linear-gradient(180deg, #5f7fd6 0%, var(--ui-blue) 40%, var(--ui-blue-dark) 100%);
-  border: 3px solid var(--ui-blue-light);
+  align-items: flex-end;
+  gap: 10px;
+  color: var(--hud-ink);
+  transform-origin: left bottom;
+  isolation: isolate; /* перемычки (z-index: -1) рисуются под блоками, но над сценой */
+}
+.hud-block {
+  position: relative;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border-radius: 22px;
+  border: 2px solid var(--hud-line);
+  background: linear-gradient(180deg, #a3acec 0%, #8b95dc 45%, #737fcb 100%);
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.35), inset 0 2px 0 rgba(255, 255, 255, 0.45),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.12);
+}
+/* Перемычка к предыдущему блоку */
+.hud-block + .hud-block::before {
+  content: '';
+  position: absolute;
+  left: -14px;
+  width: 16px;
+  top: 34%;
+  height: 32%;
+  border: 2px solid var(--hud-line);
   border-left: 0;
-  border-bottom: 0;
-  box-shadow: 0 -2px 0 rgba(0, 0, 0, 0.25), inset 0 2px 0 rgba(255, 255, 255, 0.35);
+  border-right: 0;
+  background: linear-gradient(180deg, #8b95dc, #6b77c4);
+  z-index: -1;
 }
-.hud-who {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
+.hud-work,
+.hud-side {
+  height: 180px;
 }
-.hud-portrait {
-  width: 104px;
-  height: 104px;
-  border-radius: 24px;
-  overflow: hidden;
-  border: 3px solid #fff;
-  box-shadow: 0 0 0 3px var(--accent);
-  background: radial-gradient(circle at 50% 35%, #e3edff, #7b98e0 70%);
-}
-.hud-clock {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 3px 12px;
-  border-radius: 12px;
-  background: #1b2a63;
-  box-shadow: inset 0 2px 0 rgba(0, 0, 0, 0.4);
-  line-height: 1.1;
-}
-.hud-clock .time {
-  font-size: 18px;
+.hud-title {
+  font-size: 15px;
   font-weight: bold;
-  letter-spacing: 0.5px;
+  text-align: center;
+  margin-bottom: 6px;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.45);
 }
-.hud-clock .date {
-  font-size: 11px;
-  opacity: 0.75;
-}
-.hud-info {
+
+/* Блок с портретом */
+.hud-me {
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  gap: 12px;
-  min-width: 150px;
+  gap: 8px;
+  padding: 8px 12px 10px;
+  border-radius: 28px 28px 22px 22px;
 }
 .hud-name {
-  font-size: 22px;
+  font-size: 17px;
   font-weight: bold;
-  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.4);
+  color: #fff;
+  text-shadow: 0 2px 0 var(--hud-line), 0 0 3px var(--hud-line);
+  white-space: nowrap;
 }
-.hud-action-row {
+.hud-me-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
+}
+.hud-portrait {
+  width: 96px;
+  height: 96px;
+  flex: none;
+  border-radius: 20px;
+  overflow: hidden;
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 3px var(--accent), 0 0 0 5px var(--hud-line);
+  background: radial-gradient(circle at 50% 35%, #e3edff, #7b98e0 70%);
+}
+.hud-action-col {
+  width: 62px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding-top: 8px;
 }
 .hud-action {
   position: relative;
-  width: 52px;
-  height: 52px;
+  width: 48px;
+  height: 48px;
   border-radius: 14px;
   display: grid;
   place-items: center;
-  font-size: 28px;
+  font-size: 26px;
   background: radial-gradient(circle at 50% 35%, #fff8dc, #f0c35a);
-  border: 3px solid #fff;
-  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.3);
+  border: 2px solid var(--hud-line);
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.3), inset 0 2px 0 rgba(255, 255, 255, 0.6);
 }
 .hud-action.empty {
-  background: rgba(0, 0, 0, 0.18);
-  border: 3px dashed rgba(255, 255, 255, 0.45);
-  box-shadow: none;
+  background: var(--hud-well);
+  border: 2px dashed rgba(255, 255, 255, 0.5);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.35);
 }
 .hud-action .cancel {
   position: absolute;
@@ -228,138 +252,83 @@ body {
   display: none;
 }
 .hud-action-label {
-  font-size: 14px;
+  font-size: 12px;
   font-weight: bold;
-  opacity: 0.9;
+  text-align: center;
+  line-height: 1.15;
 }
-/* Досье: вкладки сверху, под ними — содержимое открытой вкладки.
-   Размер постоянный, чтобы панель не прыгала при переключении. */
-.hud-dossier {
-  width: 320px;
+
+/* Интересы: значки под портретом */
+.hud-interests {
+  display: flex;
+  gap: 6px;
+}
+.interest {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+  border-radius: 11px;
+  border: 2px solid var(--hud-line);
+  background: radial-gradient(circle at 50% 30%, #ffffff, #c9d0f4);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  transition: transform 0.12s;
+}
+.interest:hover {
+  transform: translateY(-2px);
+}
+
+.hud-clock {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 8px;
+  padding: 3px 12px;
+  border-radius: 10px;
+  border: 2px solid var(--hud-line);
+  background: linear-gradient(180deg, #e6f1fb, #c3d9ee);
+  box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.2);
+  white-space: nowrap;
+}
+.hud-clock .date {
+  font-size: 12px;
+  opacity: 0.8;
+}
+.hud-clock .time {
+  font-size: 16px;
+  font-weight: bold;
+}
+
+/* Работа: плитки в утопленной рамке */
+.hud-work {
+  width: 360px;
   display: flex;
   flex-direction: column;
 }
-.dossier-tabs {
-  display: flex;
-  gap: 2px;
-  padding: 0 6px;
-}
-.dossier-tab {
+.hud-well {
   flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  padding: 4px 2px 5px;
-  font: inherit;
-  font-size: 12px;
-  white-space: nowrap;
-  font-weight: bold;
-  color: #fff;
-  border: 2px solid var(--ui-blue-light);
-  border-bottom: 0;
-  border-radius: 12px 12px 0 0;
-  background: linear-gradient(180deg, #4d69c4, var(--ui-blue-dark));
-  cursor: pointer;
-  opacity: 0.85;
-}
-.dossier-tab:hover {
-  opacity: 1;
-  filter: brightness(1.15);
-}
-.dossier-tab.active {
-  opacity: 1;
-  color: #1f2f6e;
-  border-color: #fff;
-  background: #dfe9ff;
-  /* вкладка «сливается» с содержимым под ней */
-  margin-bottom: -2px;
-  padding-bottom: 7px;
-  position: relative;
-  z-index: 1;
-}
-.dossier-tab-icon {
-  font-size: 13px;
-}
-.dossier-body {
-  flex: 1;
-  height: 116px;
+  min-height: 0;
   overflow-y: auto;
-  padding: 9px 12px;
-  border-radius: 18px;
-  background: linear-gradient(180deg, #dfe9ff, #b3c8f5);
-  color: #1f2f6e;
-  border: 2px solid #fff;
-  box-sizing: border-box;
+  padding: 6px;
+  border-radius: 14px;
+  background: var(--hud-well);
+  box-shadow: inset 0 3px 5px rgba(0, 0, 0, 0.4);
+  border: 2px solid var(--hud-line);
 }
-
-/* Характер: шкалы по 10 делений */
-.scales {
+.jobs {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
-.scale {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  font-weight: bold;
-}
-.scale-label {
-  width: 104px;
-  flex: none;
-}
-.scale-cells {
-  display: flex;
-  gap: 3px;
-}
-.cell {
-  width: 15px;
-  height: 14px;
-  border-radius: 4px;
-  background: rgba(31, 47, 110, 0.18);
-  box-shadow: inset 0 1px 2px rgba(31, 47, 110, 0.3);
-}
-.cell.on {
-  background: linear-gradient(180deg, #fff, var(--accent) 55%);
-  box-shadow: 0 1px 0 rgba(31, 47, 110, 0.35);
-}
-
-/* Интересы: значок и слово */
-.icon-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.icon-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 14px;
-  font-weight: bold;
-}
-.icon-item-icon {
-  width: 30px;
-  height: 30px;
-  flex: none;
-  display: grid;
-  place-items: center;
-  font-size: 18px;
-  border-radius: 9px;
-  background: #fff;
-  box-shadow: 0 2px 0 rgba(31, 47, 110, 0.25);
-}
-
-/* Работа: место и роль */
-.jobs {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
 .job {
-  padding-left: 9px;
-  border-left: 3px solid var(--accent);
+  padding: 2px 9px 3px;
+  border-radius: 9px;
+  border-left: 4px solid var(--accent);
+  background: linear-gradient(180deg, #f3f5ff, #d3d9f7);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.25);
   line-height: 1.2;
 }
 .job-place {
@@ -369,6 +338,118 @@ body {
 .job-role {
   font-size: 12px;
   opacity: 0.8;
+}
+
+/* Правый блок: значки вкладок, столбик настроения, содержимое */
+.hud-side {
+  display: flex;
+  gap: 8px;
+}
+.side-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.side-tab {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  font-size: 16px;
+  border-radius: 10px;
+  border: 2px solid var(--hud-line);
+  background: linear-gradient(180deg, #7d88d4, #5d68b8);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  opacity: 0.75;
+}
+.side-tab:hover {
+  opacity: 1;
+}
+.side-tab.active {
+  opacity: 1;
+  background: radial-gradient(circle at 50% 35%, #ffffff, #c9d0f4);
+  box-shadow: 0 0 0 2px var(--accent), 0 2px 0 rgba(0, 0, 0, 0.3);
+}
+.mood {
+  position: relative;
+  width: 20px;
+  flex: none;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 2px solid var(--hud-line);
+  background: #2f3466;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+.mood-fill {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  transition: height 0.4s;
+}
+.side-content {
+  width: 270px;
+  display: flex;
+  flex-direction: column;
+}
+.side-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding-bottom: 6px;
+}
+
+/* Цвет шкал по заполненности: зелёный, жёлтый, красный */
+.good {
+  background: linear-gradient(90deg, #58b032, #b8ec7a 70%, #e4ffc4);
+}
+.mid {
+  background: linear-gradient(90deg, #c99a12, #f2dc5a 70%, #fff6b8);
+}
+.low {
+  background: linear-gradient(90deg, #b8301f, #f07a5a 70%, #ffc9b5);
+}
+.mood-fill.good {
+  background: linear-gradient(0deg, #58b032, #b8ec7a 70%, #e4ffc4);
+}
+.mood-fill.mid {
+  background: linear-gradient(0deg, #c99a12, #f2dc5a 70%, #fff6b8);
+}
+.mood-fill.low {
+  background: linear-gradient(0deg, #b8301f, #f07a5a 70%, #ffc9b5);
+}
+
+/* Потребности: две колонки, подпись над полоской */
+.needs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-auto-flow: column;
+  gap: 6px 18px;
+}
+.need-label {
+  font-size: 13px;
+  font-weight: bold;
+  text-align: center;
+  margin-bottom: 2px;
+}
+.need-bar {
+  position: relative;
+  height: 11px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 2px solid var(--hud-line);
+  background: #3a4078;
+  box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.5);
+}
+.need-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  border-radius: 0 4px 4px 0;
 }
 
 /* Отношения: портрет знакомого и дружба */
@@ -390,7 +471,7 @@ body {
   border-radius: 16px;
   overflow: hidden;
   border: 3px solid #fff;
-  box-shadow: 0 0 0 3px var(--other);
+  box-shadow: 0 0 0 3px var(--other), 0 0 0 5px var(--hud-line);
   background: radial-gradient(circle at 50% 35%, #e3edff, #7b98e0 70%);
   cursor: pointer;
   transition: transform 0.12s;
@@ -421,11 +502,12 @@ body {
 /* Шкала от −100 до 100: середина — ноль, дружба растёт вправо, вражда — влево */
 .friend-bar {
   position: relative;
-  height: 12px;
+  height: 11px;
   border-radius: 6px;
-  background: rgba(31, 47, 110, 0.18);
-  box-shadow: inset 0 1px 2px rgba(31, 47, 110, 0.3);
   overflow: hidden;
+  border: 2px solid var(--hud-line);
+  background: #3a4078;
+  box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.5);
 }
 .friend-bar::after {
   content: '';
@@ -435,19 +517,60 @@ body {
   bottom: 0;
   width: 2px;
   margin-left: -1px;
-  background: rgba(31, 47, 110, 0.45);
+  background: rgba(255, 255, 255, 0.5);
 }
 .friend-fill {
   position: absolute;
   top: 0;
   bottom: 0;
   left: 50%;
-  background: linear-gradient(180deg, #b9f5a0, #4fb83a);
+  background: linear-gradient(180deg, #e4ffc4, #58b032);
 }
 .friend-fill.neg {
   left: auto;
   right: 50%;
-  background: linear-gradient(180deg, #ffb3a8, #d8413a);
+  background: linear-gradient(180deg, #ffc9b5, #b8301f);
+}
+
+/* Подсказка у значков интересов и вкладок */
+#ui .hud-tip {
+  position: fixed;
+  z-index: 30;
+  max-width: 220px;
+  padding: 5px 11px 6px;
+  border-radius: 10px;
+  border: 2px solid #2b2f6b;
+  background: #f4f6ff;
+  color: #1d2366;
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.12s, transform 0.12s;
+}
+#ui .hud-tip.visible {
+  opacity: 1;
+  transform: none;
+}
+.hud-tip-title {
+  font-size: 13px;
+  font-weight: bold;
+}
+.hud-tip-text {
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+/* Узкие окна: панель целиком уменьшается */
+@media (max-width: 1000px) {
+  .hud {
+    scale: 0.8;
+  }
+}
+@media (max-width: 800px) {
+  .hud {
+    scale: 0.66;
+  }
 }
 
 /* ---------- Радиальное меню ---------- */
@@ -546,7 +669,7 @@ body {
   top: 14px;
   left: 120px;
   width: min(480px, 44vw);
-  max-height: calc(100vh - 200px);
+  max-height: calc(100vh - 270px); /* не заходит на нижнюю панель */
   display: flex;
   flex-direction: column;
   border-radius: 26px;
