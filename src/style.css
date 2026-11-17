@@ -134,6 +134,7 @@ body {
   --hud-well: #4c55a0; /* утопленные области */
   position: absolute;
   left: 8px;
+  right: 8px; /* всегда во всю ширину: блоки растягиваются, см. flex у каждого */
   bottom: 8px;
   display: flex;
   align-items: flex-end;
@@ -185,6 +186,7 @@ body {
   gap: 8px;
   padding: 8px 12px 10px;
   border-radius: 28px 28px 22px 22px;
+  flex: none;
 }
 .hud-name {
   font-size: 17px;
@@ -307,7 +309,7 @@ body {
 
 /* Работа: плитки в утопленной рамке */
 .hud-work {
-  width: 360px;
+  flex: 1 1 360px; /* 360 — наименьшая ширина, лишнее место делится между блоками */
   display: flex;
   flex-direction: column;
 }
@@ -345,7 +347,7 @@ body {
 
 /* «пара слов»: текст от лица персонажа на светлой «бумаге» */
 .hud-note {
-  width: 320px;
+  flex: 1.3 1 320px; /* тексту достаётся больше свободного места */
   height: 230px; /* как блок с портретом: по краям высокие блоки, в середине низкие */
   display: flex;
   flex-direction: column;
@@ -369,6 +371,7 @@ body {
 
 /* Блок потребностей: значки вкладок (если их больше одной) и содержимое */
 .hud-side {
+  flex: 1 1 298px;
   display: flex;
   gap: 8px;
 }
@@ -403,7 +406,8 @@ body {
   box-shadow: 0 0 0 2px var(--accent), 0 2px 0 rgba(0, 0, 0, 0.3);
 }
 .side-content {
-  width: 270px;
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
 }
@@ -488,20 +492,26 @@ body {
   display: none; /* только на телефоне */
 }
 
-/* Узкие окна: панель (~1220 px шириной) целиком уменьшается */
+/* Узкие окна: блоки не влезают и в наименьшую ширину (~1220 px), поэтому панель
+   уменьшается целиком, но по-прежнему занимает всю ширину окна:
+   её ширина до уменьшения — ширина окна, делённая на масштаб. */
 @media (max-width: 1240px) {
   .hud {
     scale: 0.82;
+    right: auto;
+    width: calc((100vw - 16px) / 0.82);
   }
 }
 @media (max-width: 1015px) {
   .hud {
     scale: 0.68;
+    width: calc((100vw - 16px) / 0.68);
   }
 }
 @media (max-width: 845px) {
   .hud {
     scale: 0.5;
+    width: calc((100vw - 16px) / 0.5);
   }
 }
 
@@ -511,6 +521,7 @@ body {
 @media (max-width: 640px) {
   .hud {
     scale: none;
+    width: auto;
     left: 6px;
     right: 6px;
     bottom: 6px;
