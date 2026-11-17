@@ -688,6 +688,20 @@ body {
   background: #d8413a;
   color: #fff;
 }
+/* Телефон: кнопки и портрет в центре мельче (расстояния — в menu.js, COMPACT). */
+.radial.compact .radial-center {
+  width: 52px;
+  height: 52px;
+}
+.radial.compact .radial-pill {
+  font-size: 13px;
+  padding: 5px 11px;
+  gap: 5px;
+}
+.radial.compact .radial-dot {
+  width: 12px;
+  height: 12px;
+}
 .radial.measuring * {
   animation: none !important;
 }

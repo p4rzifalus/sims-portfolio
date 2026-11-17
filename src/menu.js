@@ -3,6 +3,10 @@
 const RADIUS = 74; // расстояние от центра до точек-соединителей, px
 const GAP = 10; // от точки до края кнопки
 const EDGE = 8; // отступ от краёв экрана
+// Телефон (та же граница, что в style.css): круг сжат по горизонтали в овал,
+// кнопки мельче — иначе меню из шести пунктов шире экрана.
+const MOBILE = window.matchMedia('(max-width: 640px)');
+const COMPACT = { rx: 46, ry: 78, gap: 7 };
 
 function el(tag, className, text) {
   const e = document.createElement(tag);
@@ -26,7 +30,11 @@ export function createRadialMenu(root, texts) {
   function open({ x, y, portrait, accent, items, onPick, onClose }) {
     close();
     const overlay = el('div', 'radial-overlay');
-    const menu = el('div', 'radial measuring');
+    const compact = MOBILE.matches;
+    const rx = compact ? COMPACT.rx : RADIUS;
+    const ry = compact ? COMPACT.ry : RADIUS;
+    const gap = compact ? COMPACT.gap : GAP;
+    const menu = el('div', 'radial measuring' + (compact ? ' compact' : ''));
     menu.style.setProperty('--accent', accent);
 
     const center = el('div', 'radial-center');
@@ -40,8 +48,8 @@ export function createRadialMenu(root, texts) {
     items.forEach((item, i) => {
       // Кнопки по кругу, первая — сверху, дальше по часовой стрелке.
       const angle = ((-90 + (i * 360) / n) * Math.PI) / 180;
-      const dx = Math.cos(angle) * RADIUS;
-      const dy = Math.sin(angle) * RADIUS;
+      const dx = Math.cos(angle) * rx;
+      const dy = Math.sin(angle) * ry;
 
       const dot = el('span', 'radial-dot');
       dot.style.left = `${dx}px`;
@@ -57,17 +65,17 @@ export function createRadialMenu(root, texts) {
       // Кнопки справа растут вправо, слева — влево, сверху/снизу — по центру.
       const cos = Math.cos(angle);
       if (cos > 0.35) {
-        pill.style.left = `${dx + GAP}px`;
+        pill.style.left = `${dx + gap}px`;
         pill.style.top = `${dy}px`;
         pill.style.translate = '0 -50%';
       } else if (cos < -0.35) {
-        pill.style.left = `${dx - GAP}px`;
+        pill.style.left = `${dx - gap}px`;
         pill.style.top = `${dy}px`;
         pill.style.translate = '-100% -50%';
       } else {
         const up = Math.sin(angle) < 0;
         pill.style.left = `${dx}px`;
-        pill.style.top = `${dy + (up ? -GAP : GAP)}px`;
+        pill.style.top = `${dy + (up ? -gap : gap)}px`;
         pill.style.translate = up ? '-50% -100%' : '-50% 0';
       }
       pill.style.animationDelay = `${i * 35}ms`;
@@ -93,21 +101,35 @@ export function createRadialMenu(root, texts) {
     root.appendChild(overlay);
 
     // Не вылезать за края экрана: измеряем меню целиком и сдвигаем.
+    // Если оно шире или выше экрана — сначала уменьшаем целиком.
     menu.style.left = `${x}px`;
     menu.style.top = `${y}px`;
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    for (const child of menu.children) {
-      const r = child.getBoundingClientRect();
-      minX = Math.min(minX, r.left);
-      minY = Math.min(minY, r.top);
-      maxX = Math.max(maxX, r.right);
-      maxY = Math.max(maxY, r.bottom);
+    const bounds = () => {
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      for (const child of menu.children) {
+        const r = child.getBoundingClientRect();
+        minX = Math.min(minX, r.left);
+        minY = Math.min(minY, r.top);
+        maxX = Math.max(maxX, r.right);
+        maxY = Math.max(maxY, r.bottom);
+      }
+      return { minX, minY, maxX, maxY };
+    };
+    let b = bounds();
+    const fit = Math.min(
+      1,
+      (window.innerWidth - 2 * EDGE) / (b.maxX - b.minX),
+      (window.innerHeight - 2 * EDGE) / (b.maxY - b.minY),
+    );
+    if (fit < 1) {
+      menu.style.scale = String(fit); // меню нулевого размера — уменьшается вокруг центра
+      b = bounds();
     }
     let sx = 0, sy = 0;
-    if (minX < EDGE) sx = EDGE - minX;
-    else if (maxX > window.innerWidth - EDGE) sx = window.innerWidth - EDGE - maxX;
-    if (minY < EDGE) sy = EDGE - minY;
-    else if (maxY > window.innerHeight - EDGE) sy = window.innerHeight - EDGE - maxY;
+    if (b.minX < EDGE) sx = EDGE - b.minX;
+    else if (b.maxX > window.innerWidth - EDGE) sx = window.innerWidth - EDGE - b.maxX;
+    if (b.minY < EDGE) sy = EDGE - b.minY;
+    else if (b.maxY > window.innerHeight - EDGE) sy = window.innerHeight - EDGE - b.maxY;
     menu.style.left = `${x + sx}px`;
     menu.style.top = `${y + sy}px`;
     menu.classList.remove('measuring'); // запускает анимацию появления
