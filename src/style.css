@@ -70,6 +70,259 @@ body {
   z-index: 10;
 }
 
+/* ---------- Радио (правый верхний угол) ---------- */
+.radio {
+  --vol: 60%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 10px 3px 3px;
+  border-radius: 999px;
+  border: 2px solid var(--ui-blue-light);
+  background: linear-gradient(180deg, #6c8ddc 0%, var(--ui-blue) 45%, var(--ui-blue-dark) 100%);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  color: var(--ui-text);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.4);
+}
+.radio button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.radio-play {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  min-width: 34px;
+  padding: 0 0 0 11px;
+  border-radius: 999px;
+  border: 2px solid #fff;
+  background: radial-gradient(circle at 40% 35%, #b9ccf6, var(--ui-blue));
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.3);
+}
+.radio-play:hover,
+.radio-next:hover {
+  filter: brightness(1.15);
+}
+.radio-play:active,
+.radio-next:active {
+  transform: translateY(1px);
+}
+.radio.idle {
+  padding-right: 3px;
+}
+.radio.idle .radio-play {
+  padding-right: 14px;
+}
+.radio-label {
+  font-size: 14px;
+  font-weight: bold;
+}
+.radio:not(.idle) .radio-label,
+.radio.idle .radio-info,
+.radio.idle .radio-next,
+.radio.idle .radio-volume {
+  display: none;
+}
+.radio:not(.idle) .radio-play {
+  width: 34px;
+  padding: 0;
+  justify-content: center;
+}
+.radio:not(.idle) .radio-play .radio-icon {
+  margin-left: 0;
+}
+
+/* Значки из рамок: треугольник «играть», две полоски «пауза», «следующая». */
+.radio-icon {
+  display: block;
+  flex: none;
+  position: relative;
+}
+.radio-icon.play {
+  width: 0;
+  height: 0;
+  margin-left: 2px;
+  border-style: solid;
+  border-width: 7px 0 7px 11px;
+  border-color: transparent transparent transparent #fff;
+  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.4));
+}
+.radio:not(.idle) .radio-icon.play {
+  transform: translateX(2px);
+}
+.radio-icon.pause {
+  width: 11px;
+  height: 13px;
+  border-left: 4px solid #fff;
+  border-right: 4px solid #fff;
+  box-sizing: border-box;
+  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.4));
+}
+.radio-icon.next {
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 6px 0 6px 9px;
+  border-color: transparent transparent transparent #fff;
+  margin-right: 3px;
+}
+.radio-icon.next::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: -6px;
+  width: 3px;
+  height: 12px;
+  background: #fff;
+}
+.radio-next {
+  width: 28px;
+  height: 28px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 2px solid var(--ui-blue-light);
+  background: var(--ui-blue-dark);
+  padding: 0;
+}
+
+.radio-info {
+  width: 180px;
+  min-width: 0;
+}
+.radio-station {
+  font-size: 10px;
+  font-weight: bold;
+  opacity: 0.75;
+  line-height: 1.2;
+}
+.radio-title-box {
+  overflow: hidden;
+  white-space: nowrap;
+  line-height: 1.3;
+  mask-image: linear-gradient(90deg, transparent 0, #000 4px, #000 calc(100% - 10px), transparent);
+}
+.radio-title {
+  display: inline-block;
+  font-size: 13px;
+  font-weight: bold;
+  color: #fff;
+  text-decoration: none;
+  padding-left: 2px;
+}
+.radio-title[href]:hover {
+  text-decoration: underline;
+}
+.radio-title-box.scroll .radio-title {
+  animation: radio-marquee var(--dur, 8s) ease-in-out infinite alternate;
+}
+@keyframes radio-marquee {
+  0%,
+  15% {
+    transform: translateX(0);
+  }
+  85%,
+  100% {
+    transform: translateX(var(--shift, 0));
+  }
+}
+.radio-progress {
+  height: 3px;
+  margin-top: 2px;
+  border-radius: 2px;
+  background: rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+}
+.radio-progress i {
+  display: block;
+  width: 0;
+  height: 100%;
+  background: #fff;
+}
+.radio.tuning .radio-title {
+  animation: radio-blink 1s steps(2, start) infinite;
+}
+@keyframes radio-blink {
+  50% {
+    opacity: 0.45;
+  }
+}
+.radio.error .radio-title {
+  color: #ffd0cc;
+}
+
+/* Лампочка у названия станции: зелёная — играет, жёлтая — ловит волну, красная — не ловит. */
+.radio:not(.idle) .radio-station::before {
+  content: '';
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 5px;
+  border-radius: 50%;
+  background: #8b8b98;
+  vertical-align: 0;
+}
+.radio.playing .radio-station::before {
+  background: #40ff90;
+  box-shadow: 0 0 6px #40ff90;
+}
+.radio.tuning .radio-station::before {
+  background: #ffd84a;
+}
+.radio.error .radio-station::before {
+  background: #ff6b5e;
+}
+
+.radio-volume {
+  width: 64px;
+  height: 14px;
+  margin: 0;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+.radio-volume::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #fff var(--vol), rgba(0, 0, 0, 0.35) var(--vol));
+}
+.radio-volume::-moz-range-track {
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #fff var(--vol), rgba(0, 0, 0, 0.35) var(--vol));
+}
+.radio-volume::-webkit-slider-thumb {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  margin-top: -4px;
+  border-radius: 50%;
+  border: 2px solid var(--ui-blue-dark);
+  background: #fff;
+}
+.radio-volume::-moz-range-thumb {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid var(--ui-blue-dark);
+  background: #fff;
+}
+
+/* Спрятанный плеер soundcloud: звук идёт из него, но на экране его нет. */
+.radio-frame {
+  position: fixed;
+  left: -10px;
+  bottom: -10px;
+  width: 1px;
+  height: 1px;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
 /* ---------- Интерфейс поверх сцены ---------- */
 /* Сам слой не ловит клики — их ловят только панели внутри,
    поэтому клик по интерфейсу никогда не «проваливается» в сцену. */
@@ -656,6 +909,13 @@ body {
     top: 8px;
     right: 8px;
   }
+  /* Радио: громкость на телефоне — кнопками самого телефона. */
+  .radio-volume {
+    display: none;
+  }
+  .radio-info {
+    width: min(130px, calc(100vw - 230px));
+  }
 }
 
 /* ---------- Радиальное меню ---------- */
@@ -934,7 +1194,7 @@ a.work-card:hover {
   pointer-events: auto;
   position: absolute;
   z-index: 12;
-  top: 84px;
+  top: calc(var(--corner-bottom, 72px) + 12px); /* под кнопками в углу (их высоту считает main.js) */
   right: 12px;
   width: min(300px, 40vw);
   display: flex;
@@ -1167,23 +1427,23 @@ body.closeup #ui .closeup-bar {
    (здесь, в конце файла, чтобы перебить обычные правила .notice и .panel) */
 @media (max-width: 640px) {
   .banner {
-    top: 84px;
+    top: calc(var(--corner-bottom, 72px) + 10px);
     width: calc(100vw - 16px);
   }
   #ui:has(.banner:not(.leaving)) .notice {
-    top: 176px;
+    top: calc(var(--corner-bottom, 72px) + 102px);
   }
   .notice {
-    top: 84px;
+    top: calc(var(--corner-bottom, 72px) + 10px);
     left: 8px;
     right: 8px;
     width: auto;
   }
   .panel {
-    top: 80px;
+    top: calc(var(--corner-bottom, 72px) + 8px); /* под радио и кнопками в углу */
     left: 8px;
     right: 8px;
     width: auto;
-    max-height: calc(100vh - 80px - 320px); /* над нижней панелью */
+    max-height: calc(100vh - var(--corner-bottom, 72px) - 8px - 320px); /* над нижней панелью */
   }
 }

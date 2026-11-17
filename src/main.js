@@ -12,6 +12,7 @@ import {
   panels as panelTexts,
   welcome,
   dossier,
+  radio as radioData,
 } from './data.js';
 import { typoDeep } from './typo.js';
 import { buildRoom } from './room.js';
@@ -25,9 +26,10 @@ import { createPanels } from './panels.js';
 import { performAction, performSocial, freeSpot } from './actions.js';
 import { createBanners } from './banner.js';
 import { showWelcome } from './welcome.js';
+import { createRadio } from './radio.js';
 
 // Короткие слова во всех текстах приклеиваем к следующему слову (см. typo.js).
-typoDeep([ui, characterData, characterActions, social, panelTexts, furniture, welcome, dossier]);
+typoDeep([ui, characterData, characterActions, social, panelTexts, furniture, welcome, dossier, radioData]);
 
 // ---------- Настройки вида (не контент, поэтому здесь, а не в data.js) ----------
 const CAMERA_ELEVATION = 30; // наклон камеры, градусы (0 — сбоку, 90 — сверху)
@@ -231,6 +233,17 @@ window.addEventListener('keydown', (e) => {
 
 window.addEventListener('resize', resize);
 setPS1(ps1On);
+
+// Радио — первым в правом верхнем углу, над кнопками PS1 и сетки.
+const corner = document.getElementById('corner');
+const radio = createRadio(corner, radioData);
+// Письмо и баннер встают под угол с кнопками — его высота меняется, когда радио раскрывается.
+function updateCornerBottom() {
+  document.documentElement.style.setProperty('--corner-bottom', `${Math.round(corner.getBoundingClientRect().bottom)}px`);
+}
+updateCornerBottom();
+window.addEventListener('resize', updateCornerBottom);
+new ResizeObserver(updateCornerBottom).observe(corner);
 
 // ---------- Персонажи и выбор ----------
 const characters = [];
@@ -485,7 +498,7 @@ frame();
 if (import.meta.env.DEV) {
   window.__app = {
     scene, camera, grid, debug, setPS1, toScreen, ps1Uniforms, characters, select, pick, occupancy, menu,
-    renderer, pass, basePos, built, loadModel, renderPortrait, cam, openCloseUp, closeCloseUp, furniture,
+    renderer, pass, basePos, built, loadModel, renderPortrait, cam, openCloseUp, closeCloseUp, furniture, radio,
     get selected() {
       return selected;
     },
