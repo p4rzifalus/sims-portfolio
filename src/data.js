@@ -317,7 +317,7 @@ export const furniture = [
   {
     id: 'plant',
     type: 'plant',
-    cells: [[0, 4]], // у дивана
+    cells: [[0, 1]], // у дивана, со стороны торшера
     blocks: true,
   },
   {

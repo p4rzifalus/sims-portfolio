@@ -24,7 +24,7 @@ function box(w, h, d, mat, x = 0, y = 0, z = 0) {
 
 // Тонкие листья растений — без дрожания вершин: верх и низ листа толщиной в сантиметр
 // прыгают по сетке врозь, листья протыкают друг друга и мерцают.
-// Дрожание включается на материал, поэтому у листьев свои материалы (leaf, leafDark) —
+// Дрожание включается на материал, поэтому у листьев свой материал (leaf) —
 // если отдать их и «дрожащей» детали, листья снова задрожат.
 function steady(mesh) {
   mesh.userData.noSnap = true;
@@ -333,7 +333,7 @@ const builders = {
   },
 
   wardrobe({ w, d }, m, item) {
-    // Шкаф для одежды: две двери, на правой — зеркало.
+    // Шкаф для одежды: две двери с ручками.
     const g = new THREE.Group();
     const W = w - 0.12, D = 0.6, H = 2.15;
     const zc = -d / 2 + D / 2 + 0.03;
@@ -351,9 +351,6 @@ const builders = {
       g.add(box(dw, H - 0.22, 0.02, door, x, 0.15, zc + D / 2));
       g.add(box(0.02, 0.32, 0.03, m.metalBlack, sx * 0.06, 1.0, zc + D / 2 + 0.02)); // ручка
     }
-    const mirror = new THREE.Mesh(new THREE.PlaneGeometry(dw - 0.2, H - 0.6), m.mirror);
-    mirror.position.set(dw / 2 + 0.01, 0.15 + (H - 0.22) / 2, zc + D / 2 + 0.011);
-    g.add(mirror);
     return g;
   },
 
@@ -367,11 +364,11 @@ const builders = {
       const a = i * 2.4;
       const h = 0.6 + rnd() * 0.7;
       const r = 0.12 + rnd() * 0.2;
-      const stem = box(0.02, h - 0.3, 0.02, m.leafDark, 0, 0, 0);
+      const stem = box(0.02, h - 0.3, 0.02, m.leaf, 0, 0, 0);
       stem.position.set(Math.cos(a) * r * 0.5, 0.38, Math.sin(a) * r * 0.5);
       stem.rotation.set(Math.sin(a) * 0.25, 0, -Math.cos(a) * 0.25);
       g.add(steady(stem));
-      const leaf = box(0.34, 0.03, 0.24, i % 2 ? m.leaf : m.leafDark, 0, 0, 0);
+      const leaf = box(0.34, 0.03, 0.24, m.leaf, 0, 0, 0);
       leaf.position.set(Math.cos(a) * r, 0.38 + h - 0.3, Math.sin(a) * r);
       leaf.rotation.set(0, -a, 0.45);
       g.add(steady(leaf));
@@ -458,9 +455,7 @@ export function buildRoom(room, furniture) {
     pot: lambert({ color: '#c97a55' }),
     soil: lambert({ color: '#3b2a22' }),
     leaf: lambert({ color: '#4f8a4a' }),
-    leafDark: lambert({ color: '#2f6338' }),
     mug: lambert({ color: '#e8833a' }),
-    mirror: new THREE.MeshBasicMaterial({ map: tex.mirror() }),
     books: ['#9c3a32', '#2f5d8a', '#d1a63a', '#3d7a4a', '#6b4a8a', '#c9c2b0', '#2b2b30'].map((c) => lambert({ color: c })),
   };
 
