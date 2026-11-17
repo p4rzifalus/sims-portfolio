@@ -1,4 +1,4 @@
-// Маленькие текстуры 32×32, нарисованные кодом попиксельно.
+// Маленькие текстуры 32×32 (вид из окна и плакат — крупнее), нарисованные кодом попиксельно.
 // Фильтрация nearest — пиксели остаются чёткими квадратами.
 import * as THREE from 'three';
 
@@ -22,16 +22,17 @@ export function hexToRgb(hex) {
 const clamp = (v) => Math.max(0, Math.min(255, Math.round(v)));
 const shade = (rgb, k) => rgb.map((v) => clamp(v * k));
 
-function makeTexture(draw, seed = 1) {
+function makeTexture(draw, seed = 1, W = 32, H = 32) {
   const canvas = document.createElement('canvas');
-  canvas.width = canvas.height = 32;
+  canvas.width = W;
+  canvas.height = H;
   const ctx = canvas.getContext('2d');
-  const img = ctx.createImageData(32, 32);
+  const img = ctx.createImageData(W, H);
   const rnd = random(seed);
-  for (let y = 0; y < 32; y++) {
-    for (let x = 0; x < 32; x++) {
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
       const [r, g, b] = draw(x, y, rnd);
-      const i = (y * 32 + x) * 4;
+      const i = (y * W + x) * 4;
       img.data[i] = clamp(r);
       img.data[i + 1] = clamp(g);
       img.data[i + 2] = clamp(b);
@@ -39,6 +40,10 @@ function makeTexture(draw, seed = 1) {
     }
   }
   ctx.putImageData(img, 0, 0);
+  return canvasTexture(canvas);
+}
+
+function canvasTexture(canvas) {
   const tex = new THREE.CanvasTexture(canvas);
   tex.magFilter = THREE.NearestFilter;
   tex.minFilter = THREE.NearestFilter;
@@ -154,4 +159,155 @@ export function screen() {
     }
     return shade(bg, 0.9 + rnd() * 0.2);
   }, 72);
+}
+
+// Экран ноутбука с «макетом»: панели редактора и карточки на холсте.
+export function designScreen() {
+  return makeTexture((x, y, rnd) => {
+    if (y < 3) return [52, 52, 60]; // верхняя полоска
+    if (x < 6) return y % 4 === 1 && x > 1 && x < 5 ? [120, 120, 135] : [44, 44, 52]; // слои
+    if (x > 26) return y % 5 === 2 && x < 31 ? [110, 110, 125] : [44, 44, 52]; // свойства
+    // холст с тремя карточками
+    if (y > 6 && y < 17 && x > 8 && x < 16) return [240, 130, 80];
+    if (y > 6 && y < 17 && x > 17 && x < 25) return [90, 160, 220];
+    if (y > 19 && y < 28 && x > 8 && x < 25) return y === 22 || y === 25 ? [70, 70, 80] : [235, 232, 225];
+    return shade([200, 200, 205], 0.97 + rnd() * 0.04);
+  }, 81);
+}
+
+// Вид из окна: петербург белой ночью. Ширина — 32 пикселя на клетку окна.
+// Сверху вниз: небо, дальний берег с домами, шпиль и купол, разведённый мост,
+// нева с отражениями, гранитная набережная.
+export function cityView(cells = 4) {
+  const W = 32 * cells, H = 72;
+  const HORIZON = 44, EMBANK = 61;
+  const rnd0 = random(91);
+  const facades = [[222, 196, 120], [170, 205, 185], [226, 170, 160], [170, 190, 220], [235, 225, 200], [205, 150, 120]];
+  // дома дальнего берега: ширина, высота, цвет (одна линия карнизов, как на набережных)
+  const houses = [];
+  for (let x = 0; x < W; ) {
+    const w = 6 + Math.floor(rnd0() * 10);
+    houses.push({ x0: x, x1: x + w, h: 6 + Math.floor(rnd0() * 3), c: facades[Math.floor(rnd0() * facades.length)] });
+    x += w;
+  }
+  const spireX = Math.round(W * 0.22); // шпиль петропавловки
+  const domeX = Math.round(W * 0.7); // купол исаакия
+  const bridgeX = Math.round(W * 0.46); // разведённый мост
+  const mix = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
+  const skyAt = (y) => {
+    const t = y / HORIZON;
+    return t < 0.55 ? mix([118, 112, 178], [214, 156, 176], t / 0.55) : mix([214, 156, 176], [255, 214, 170], (t - 0.55) / 0.45);
+  };
+  const gold = [236, 190, 90];
+
+  function land(x, y) {
+    // шпиль: башня и тонкая игла
+    if (Math.abs(x - spireX) <= 2 && y >= HORIZON - 16 && y < HORIZON - 8) return [200, 170, 120];
+    if (Math.abs(x - spireX) <= 1 && y >= HORIZON - 22 && y < HORIZON - 16) return gold;
+    if (x === spireX && y >= 6 && y < HORIZON - 22) return gold;
+    // исаакий: широкое основание с фронтоном, барабан с колоннами, большой купол, фонарик
+    const dx = x - domeX;
+    const dy = HORIZON - 17 - y;
+    if (y < HORIZON - 17 && dx * dx + dy * dy * 1.6 <= 64) return dx < -3 ? [196, 146, 58] : dx > 3 ? [250, 214, 120] : gold;
+    if (Math.abs(dx) <= 6 && y >= HORIZON - 17 && y < HORIZON - 11) return x % 2 ? [204, 194, 172] : [140, 130, 116];
+    if (Math.abs(dx) <= 1 && y >= HORIZON - 27 && y < HORIZON - 23) return gold;
+    if (y >= HORIZON - 11 && y < HORIZON - 8 && Math.abs(dx) <= 7 - (HORIZON - 9 - y) * 2) return [186, 176, 156]; // фронтон
+    if (Math.abs(dx) <= 11 && y >= HORIZON - 8 && y < HORIZON) return (x % 3 === 0 && y > HORIZON - 7) ? [150, 140, 124] : [186, 176, 156];
+    // разведённый мост: опоры и два пролёта, поднятые вверх
+    for (const s of [-1, 1]) {
+      const bx = bridgeX + s * 3, t = (x - bx) * s;
+      if (t >= 0 && t < 7 && y < HORIZON && y >= HORIZON - 1 - (7 - t) * 1.4 - 2 && y <= HORIZON - 1 - (7 - t) * 1.4 + 1) return [72, 74, 96];
+      if (t >= 7 && t < 22 && y >= HORIZON - 2 && y < HORIZON) return y === HORIZON - 2 ? [96, 98, 120] : [72, 74, 96];
+    }
+    // дома с окнами
+    const h = houses.find((hh) => x >= hh.x0 && x < hh.x1);
+    if (h && y >= HORIZON - h.h) {
+      if (y === HORIZON - h.h) return shade(h.c, 1.1); // карниз
+      if (x === h.x0) return shade(h.c, 0.8);
+      if ((x - h.x0) % 3 === 1 && (HORIZON - y) % 3 === 2) return ((x * 7919) ^ (y * 104729)) % 5 === 0 ? [255, 230, 150] : shade(h.c, 0.6); // в некоторых окнах свет
+      return h.c;
+    }
+    return null;
+  }
+
+  return makeTexture((x, y, rnd) => {
+    if (y < HORIZON) {
+      const l = land(x, y);
+      if (l) return mix(l, skyAt(y), 0.18); // дымка на дальнем берегу
+      let c = skyAt(y);
+      if ((rnd() < 0.5 ? 0 : 1) && y % 7 === 3) c = shade(c, 1.02); // дизеринг полос
+      const cloud = Math.sin(x * 0.11 + 2) + Math.sin(x * 0.05 + y * 0.4);
+      if (y > 10 && y < 16 && cloud > 1.4) c = mix(c, [255, 225, 225], 0.6);
+      return c;
+    }
+    if (y < EMBANK) {
+      // нева: отражение неба, дрожащее рябью, золотые дорожки под шпилем и куполом
+      const ry = HORIZON - 1 - (y - HORIZON) * 1.6;
+      const wob = Math.round(Math.sin(y * 1.7 + x * 0.3) * 1.5);
+      const refl = ry > 0 ? land(x + wob, Math.floor(ry)) : null;
+      let c = mix([60, 62, 110], skyAt(Math.max(0, ry)), 0.45);
+      if (refl) c = mix(c, refl, 0.35);
+      if (y % 3 === 0 && rnd() < 0.3) c = shade(c, 1.15); // блики ряби
+      return c;
+    }
+    // гранит набережной
+    if (y === EMBANK) return [190, 170, 165];
+    return shade([150, 128, 125], 0.85 + rnd() * 0.25);
+  }, 92, W, H);
+}
+
+// Зеркало: голубоватое, с двумя светлыми бликами наискосок.
+export function mirror() {
+  return makeTexture((x, y, rnd) => {
+    const d = (x + y) % 32;
+    let c = [176 + y * 0.8, 192 + y * 0.6, 210];
+    if (d > 6 && d < 10) c = [228, 236, 244];
+    if (d > 12 && d < 14) c = [214, 224, 236];
+    return shade(c, 0.98 + rnd() * 0.04);
+  }, 101);
+}
+
+// Плакат: цветной фон, крупный заголовок и строчки текста.
+// Текст рисуется шрифтом, а потом «огрубляется» до чётких пикселей, как в старых играх.
+export function poster({ title = '', lines = [], color = '#e8833a', textColor = '#1d1b26' }) {
+  const W = 72, H = 96;
+  const canvas = document.createElement('canvas');
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = color;
+  ctx.fillRect(0, 0, W, H);
+  // графика: круг и полоса
+  ctx.fillStyle = 'rgba(255,255,255,0.35)';
+  ctx.beginPath();
+  ctx.arc(W * 0.72, H * 0.3, 18, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = textColor;
+  ctx.fillRect(6, H - 14, W - 12, 3);
+
+  const txt = document.createElement('canvas');
+  txt.width = W;
+  txt.height = H;
+  const t = txt.getContext('2d');
+  t.fillStyle = '#fff';
+  t.textBaseline = 'top';
+  let size = 30;
+  t.font = `900 ${size}px sans-serif`;
+  while (size > 10 && t.measureText(title).width > W - 10) t.font = `900 ${--size}px sans-serif`;
+  t.fillText(title, 6, 8);
+  t.font = '700 9px sans-serif';
+  lines.forEach((line, i) => t.fillText(line, 6, 12 + size + i * 11, W - 12));
+  // порог: пиксель либо цвета текста, либо фона — никаких полутонов
+  const src = t.getImageData(0, 0, W, H).data;
+  const out = ctx.getImageData(0, 0, W, H);
+  const [r, g, b] = hexToRgb(textColor);
+  for (let i = 0; i < src.length; i += 4) {
+    if (src[i + 3] > 110) {
+      out.data[i] = r;
+      out.data[i + 1] = g;
+      out.data[i + 2] = b;
+    }
+  }
+  ctx.putImageData(out, 0, 0);
+  return canvasTexture(canvas);
 }

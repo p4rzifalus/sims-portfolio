@@ -17,8 +17,8 @@
 
 // ---------- Комната ----------
 export const room = {
-  columns: 6, // ширина в клетках
-  rows: 6, // глубина в клетках
+  columns: 8, // ширина в клетках (вдоль задней стены, где окно)
+  rows: 7, // глубина в клетках (вдоль левой стены)
   wallHeight: 2.6, // высота стен (1 = одна клетка)
   colors: {
     floor: '#a9743f', // доски пола
@@ -67,7 +67,7 @@ export const characters = [
     name: 'соня сурм',
     model: 'character-female-a',
     color: '#e8833a',
-    startCell: [2, 3], // где стоит при открытии сайта (номера клеток видны по клавише G)
+    startCell: [3, 4], // где стоит при открытии сайта (номера клеток видны по клавише G)
     startFacing: 'south',
     traits: [
       { icon: '🎨', label: 'дизайнер' },
@@ -96,7 +96,7 @@ export const characters = [
     name: 'паша архангельский',
     model: 'character-male-a',
     color: '#4aa3c7',
-    startCell: [4, 2],
+    startCell: [5, 4],
     startFacing: 'south',
     traits: [
       { icon: '💻', label: 'разработчик' },
@@ -137,10 +137,18 @@ export const panels = {
 };
 
 // ---------- Мебель и предметы ----------
-// type     — что это за предмет (как он выглядит, решает код)
+// type     — что это за предмет (как он выглядит, решает код). Есть:
+//            designDesk (белый стол), macbook (ноутбук, ставится на стол),
+//            designChair (стул-чаша), bookcase (книжный шкаф), wardrobe (шкаф для одежды),
+//            sofa (диван), plant (растение), floorLamp (торшер), rug (ковёр),
+//            panoramicWindow (окно во всю стену), poster (плакат);
+//            из первой версии комнаты: desk, computer, chair, bookshelf, window
 // cells    — какие клетки занимает
 // blocks   — true: сквозь предмет нельзя пройти; false: можно (ковёр, стул)
 // facing   — куда предмет «смотрит» лицом
+// wall     — для предметов на стене: 'north' (задняя) или 'west' (левая);
+//            cells — над какими клетками висит
+// color    — цвет (у дивана — обивка, у стула — чаша, у шкафа — дерево, у ковра — ворс)
 // actions  — если есть, предмет становится кликабельным и по клику открывает
 //            меню. У каждого действия (= кнопки в меню):
 //     label        — надпись на кнопке
@@ -153,34 +161,45 @@ export const panels = {
 //     panel        — какую панель открыть: 'works', 'links' или 'about'
 //     panelDelay   — через сколько секунд после анимации открыть панель
 //     occupies     — true: пока действие идёт, место занято — у второго
-//                    персонажа кнопка будет серой с подписью «Занято»
+//                    персонажа кнопка будет серой с подписью «занято»
 // Действие заканчивается, когда закрывают панель. Отменить его можно
 // крестиком в нижней панели или кликом по полу.
 export const furniture = [
+  // --- окно во всю заднюю стену, за ним петербург ---
+  {
+    id: 'window',
+    type: 'panoramicWindow',
+    wall: 'north',
+    cells: [[3, 0], [4, 0], [5, 0], [6, 0], [7, 0]],
+    blocks: false,
+  },
+
+  // --- рабочее место: длинный стол, два макбука, два стула ---
   {
     id: 'desk',
-    type: 'desk',
-    cells: [[1, 0], [2, 0]],
+    type: 'designDesk',
+    cells: [[4, 0], [5, 0], [6, 0]],
     blocks: true,
     facing: 'south',
   },
   {
-    id: 'computer',
-    type: 'computer',
-    name: 'компьютер',
-    cells: [[2, 0]], // стоит на столе
+    id: 'macbook-1',
+    type: 'macbook',
+    name: 'макбук',
+    cells: [[4, 0]], // стоит на столе
     onTopOf: 'desk',
     blocks: false,
     facing: 'south',
+    screen: 'design', // что на экране: 'design' (макет) или 'code' (код)
     actions: [
       {
         id: 'show-works',
         label: 'показать работы',
         icon: '🖼️',
-        goTo: [2, 2], // клетка позади стула
+        goTo: [4, 2], // клетка позади стула
         face: 'north',
         animation: 'sit',
-        sitOn: 'chair',
+        sitOn: 'chair-1',
         panel: 'works',
         panelDelay: 1,
         occupies: true,
@@ -189,10 +208,10 @@ export const furniture = [
         id: 'show-links',
         label: 'ссылки',
         icon: '🔗',
-        goTo: [2, 2], // клетка позади стула
+        goTo: [4, 2],
         face: 'north',
         animation: 'sit',
-        sitOn: 'chair',
+        sitOn: 'chair-1',
         panel: 'links',
         panelDelay: 1,
         occupies: true,
@@ -200,37 +219,98 @@ export const furniture = [
     ],
   },
   {
-    id: 'chair',
-    type: 'chair',
-    cells: [[2, 1]],
-    blocks: false, // на эту клетку персонаж встаёт, чтобы сесть
-    facing: 'north',
+    id: 'macbook-2',
+    type: 'macbook',
+    name: 'макбук',
+    cells: [[6, 0]],
+    onTopOf: 'desk',
+    blocks: false,
+    facing: 'south',
+    screen: 'code',
+    actions: [
+      {
+        id: 'show-works',
+        label: 'показать работы',
+        icon: '🖼️',
+        goTo: [6, 2],
+        face: 'north',
+        animation: 'sit',
+        sitOn: 'chair-2',
+        panel: 'works',
+        panelDelay: 1,
+        occupies: true,
+      },
+      {
+        id: 'show-links',
+        label: 'ссылки',
+        icon: '🔗',
+        goTo: [6, 2],
+        face: 'north',
+        animation: 'sit',
+        sitOn: 'chair-2',
+        panel: 'links',
+        panelDelay: 1,
+        occupies: true,
+      },
+    ],
   },
   {
-    id: 'bookshelf',
-    type: 'bookshelf',
-    cells: [[0, 2]],
-    blocks: true,
-    facing: 'east',
+    id: 'chair-1',
+    type: 'designChair',
+    cells: [[4, 1]],
+    blocks: false, // на эту клетку персонаж встаёт, чтобы сесть
+    facing: 'north',
+    color: '#efece6',
   },
+  {
+    id: 'chair-2',
+    type: 'designChair',
+    cells: [[6, 1]],
+    blocks: false,
+    facing: 'north',
+    color: '#e8833a',
+  },
+  {
+    id: 'plant',
+    type: 'plant',
+    cells: [[7, 1]],
+    blocks: true,
+  },
+
+  // --- у задней стены слева: торшер и книжный шкаф ---
+  {
+    id: 'lamp',
+    type: 'floorLamp',
+    cells: [[0, 0]],
+    blocks: true,
+  },
+  {
+    id: 'bookcase',
+    type: 'bookcase',
+    cells: [[1, 0], [2, 0]],
+    blocks: true,
+    facing: 'south',
+  },
+
+  // --- у левой стены: диван, над ним плакат, дальше шкаф для одежды ---
   {
     id: 'sofa',
     type: 'sofa',
     name: 'диван',
-    cells: [[0, 4], [0, 5]],
+    cells: [[0, 2], [0, 3]],
     blocks: true,
     facing: 'east',
     color: '#5b6e9c', // цвет обивки
     // ПРИМЕР: чтобы диван стал кликабельным, уберите две косые черты
     // в начале каждой строки ниже (от "actions" до "],").
-    // Персонаж подойдёт к клетке 1,4, сядет на диван и через секунду
-    // откроет панель «О себе». Второй в это время увидит «Занято».
+    // Персонаж подойдёт к клетке 1,3, сядет на диван и через секунду
+    // откроет панель «о себе». Второй в это время увидит «занято».
     // actions: [
     //   {
     //     id: 'rest',
     //     label: 'отдохнуть',
     //     icon: '🛋️',
-    //     goTo: [1, 4],
+    //     goTo: [1, 3],
     //     face: 'west',
     //     animation: 'sit',
     //     sitOn: 'sofa',
@@ -241,22 +321,29 @@ export const furniture = [
     // ],
   },
   {
-    id: 'lamp',
-    type: 'floorLamp',
-    cells: [[0, 0]],
-    blocks: true,
+    id: 'poster',
+    type: 'poster',
+    wall: 'west',
+    cells: [[0, 2], [0, 3]], // висит над диваном
+    blocks: false,
+    height: 1.75, // где центр плаката по высоте (высота стены — 2.6)
+    title: 'ПИН',
+    lines: ['курс щелочи', 'набор открыт'],
+    color: '#e8833a', // фон
+    textColor: '#1d1b26', // текст
   },
   {
-    id: 'window',
-    type: 'window',
-    wall: 'north', // на какой стене висит: 'north' (задняя) или 'west' (левая)
-    cells: [[4, 0]], // над какой клеткой
-    blocks: false,
+    id: 'wardrobe',
+    type: 'wardrobe',
+    cells: [[0, 5], [0, 6]],
+    blocks: true,
+    facing: 'east',
+    color: '#cdb28a',
   },
   {
     id: 'rug',
     type: 'rug',
-    cells: [[2, 3], [3, 3], [4, 3], [2, 4], [3, 4], [4, 4]],
+    cells: [[1, 2], [2, 2], [3, 2], [1, 3], [2, 3], [3, 3]],
     blocks: false,
     color: '#8c3b3b',
   },
