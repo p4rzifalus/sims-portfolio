@@ -1,6 +1,6 @@
 // Интерфейс поверх 3D: колонка портретов слева и панель выбранного персонажа снизу.
 // Нижняя панель — три блока, как в The Sims 2: портрет (под ним интересы и часы),
-// работа и правый блок с вкладками (потребности, отношения).
+// работа и правый блок с потребностями.
 // Все тексты берутся из data.js. Здесь только HTML и реакция на клики.
 
 function el(tag, className, text) {
@@ -52,7 +52,6 @@ export function createUI({ characters, texts, dossier, onSelect, onCancel }) {
     </div>
     <div class="hud-block hud-side">
       <div class="side-tabs"></div>
-      <div class="mood"><span class="mood-fill"></span></div>
       <div class="side-content">
         <div class="hud-title side-title"></div>
         <div class="side-body"></div>
@@ -72,8 +71,6 @@ export function createUI({ characters, texts, dossier, onSelect, onCancel }) {
   const tabsEl = $('.side-tabs');
   const sideTitle = $('.side-title');
   const sideBody = $('.side-body');
-  const moodEl = $('.mood');
-  const moodFill = $('.mood-fill');
   const timeEl = $('.hud-clock .time');
   const dateEl = $('.hud-clock .date');
   $('.hud-work .hud-title').textContent = dossier.jobsTitle;
@@ -145,6 +142,7 @@ export function createUI({ characters, texts, dossier, onSelect, onCancel }) {
     tabsEl.appendChild(b);
     tabButtons[t.id] = b;
   }
+  tabsEl.hidden = dossier.tabs.length < 2; // одной вкладке переключатель не нужен
 
   // Доля от 0 до 1 → цвет шкалы, как в The Sims: зелёный, жёлтый, красный.
   const level = (k) => (k >= 0.6 ? 'good' : k >= 0.3 ? 'mid' : 'low');
@@ -167,41 +165,6 @@ export function createUI({ characters, texts, dossier, onSelect, onCancel }) {
       }
       return grid;
     },
-    // Портрет знакомого (клик — выбрать его) и цифра дружбы со шкалой от −100 до 100.
-    relationships(d) {
-      const list = el('div', 'relations');
-      for (const r of d.relationships || []) {
-        const other = characters.find((c) => c.id === r.who);
-        if (!other) continue;
-        const item = el('div', 'relation');
-        item.style.setProperty('--other', other.color);
-        const face = el('button', 'relation-portrait');
-        face.type = 'button';
-        face.title = other.name;
-        const img = el('img');
-        img.alt = '';
-        if (portraits[other.id]) img.src = portraits[other.id];
-        face.appendChild(img);
-        face.addEventListener('click', () => onSelect(other.id));
-        item.appendChild(face);
-
-        const info = el('div', 'relation-info');
-        info.appendChild(el('div', 'relation-name', other.name));
-        const f = Math.max(-100, Math.min(100, r.friendship));
-        const line = el('div', 'relation-score');
-        line.appendChild(el('span', 'relation-label', dossier.friendshipLabel));
-        line.appendChild(el('span', 'relation-value', String(f)));
-        info.appendChild(line);
-        const bar = el('div', 'friend-bar');
-        const fill = el('span', f < 0 ? 'friend-fill neg' : 'friend-fill');
-        fill.style.width = `${Math.abs(f) / 2}%`;
-        bar.appendChild(fill);
-        info.appendChild(bar);
-        item.appendChild(info);
-        list.appendChild(item);
-      }
-      return list;
-    },
   };
 
   function renderSide() {
@@ -209,15 +172,6 @@ export function createUI({ characters, texts, dossier, onSelect, onCancel }) {
     sideTitle.textContent = dossier.tabs.find((t) => t.id === tab).label;
     sideBody.replaceChildren(selectedData ? views[tab](selectedData) : '');
   }
-
-  // Столбик настроения — среднее всех потребностей.
-  function renderMood(d) {
-    const values = dossier.needs.map((n) => (d.needs && d.needs[n.id]) || 0);
-    const k = values.reduce((a, b) => a + b, 0) / (values.length * dossier.needsMax || 1);
-    moodFill.style.height = `${Math.max(0, Math.min(1, k)) * 100}%`;
-    moodFill.className = `mood-fill ${level(k)}`;
-  }
-  withTip(moodEl, dossier.moodLabel);
 
   function renderDossier(d) {
     interestsEl.replaceChildren(
@@ -236,7 +190,6 @@ export function createUI({ characters, texts, dossier, onSelect, onCancel }) {
         return item;
       }),
     );
-    renderMood(d);
     renderSide();
   }
 
@@ -258,7 +211,6 @@ export function createUI({ characters, texts, dossier, onSelect, onCancel }) {
       portraits[id] = url;
       portraitButtons[id].querySelector('img').src = url;
       if (id === selectedId) bigPortrait.src = url;
-      if (tab === 'relationships') renderSide(); // портреты знакомых появляются после загрузки
     },
 
     setSelected(data) {

@@ -340,10 +340,13 @@ body {
   opacity: 0.8;
 }
 
-/* Правый блок: значки вкладок, столбик настроения, содержимое */
+/* Правый блок: значки вкладок (если их больше одной) и содержимое */
 .hud-side {
   display: flex;
   gap: 8px;
+}
+.side-tabs[hidden] {
+  display: none;
 }
 .side-tabs {
   display: flex;
@@ -372,23 +375,6 @@ body {
   background: radial-gradient(circle at 50% 35%, #ffffff, #c9d0f4);
   box-shadow: 0 0 0 2px var(--accent), 0 2px 0 rgba(0, 0, 0, 0.3);
 }
-.mood {
-  position: relative;
-  width: 20px;
-  flex: none;
-  border-radius: 10px;
-  overflow: hidden;
-  border: 2px solid var(--hud-line);
-  background: #2f3466;
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
-}
-.mood-fill {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  transition: height 0.4s;
-}
 .side-content {
   width: 270px;
   display: flex;
@@ -412,16 +398,6 @@ body {
 .low {
   background: linear-gradient(90deg, #b8301f, #f07a5a 70%, #ffc9b5);
 }
-.mood-fill.good {
-  background: linear-gradient(0deg, #58b032, #b8ec7a 70%, #e4ffc4);
-}
-.mood-fill.mid {
-  background: linear-gradient(0deg, #c99a12, #f2dc5a 70%, #fff6b8);
-}
-.mood-fill.low {
-  background: linear-gradient(0deg, #b8301f, #f07a5a 70%, #ffc9b5);
-}
-
 /* Потребности: две колонки, подпись над полоской */
 .needs {
   display: grid;
@@ -450,86 +426,6 @@ body {
   top: 0;
   bottom: 0;
   border-radius: 0 4px 4px 0;
-}
-
-/* Отношения: портрет знакомого и дружба */
-.relations {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.relation {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.relation-portrait {
-  width: 72px;
-  height: 72px;
-  flex: none;
-  padding: 0;
-  border-radius: 16px;
-  overflow: hidden;
-  border: 3px solid #fff;
-  box-shadow: 0 0 0 3px var(--other), 0 0 0 5px var(--hud-line);
-  background: radial-gradient(circle at 50% 35%, #e3edff, #7b98e0 70%);
-  cursor: pointer;
-  transition: transform 0.12s;
-}
-.relation-portrait:hover {
-  transform: scale(1.06);
-}
-.relation-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.relation-name {
-  font-size: 15px;
-  font-weight: bold;
-}
-.relation-score {
-  display: flex;
-  justify-content: space-between;
-  font-size: 13px;
-  font-weight: bold;
-}
-.relation-value {
-  font-size: 18px;
-  line-height: 1;
-}
-/* Шкала от −100 до 100: середина — ноль, дружба растёт вправо, вражда — влево */
-.friend-bar {
-  position: relative;
-  height: 11px;
-  border-radius: 6px;
-  overflow: hidden;
-  border: 2px solid var(--hud-line);
-  background: #3a4078;
-  box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.5);
-}
-.friend-bar::after {
-  content: '';
-  position: absolute;
-  left: 50%;
-  top: 0;
-  bottom: 0;
-  width: 2px;
-  margin-left: -1px;
-  background: rgba(255, 255, 255, 0.5);
-}
-.friend-fill {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 50%;
-  background: linear-gradient(180deg, #e4ffc4, #58b032);
-}
-.friend-fill.neg {
-  left: auto;
-  right: 50%;
-  background: linear-gradient(180deg, #ffc9b5, #b8301f);
 }
 
 /* Подсказка у значков интересов и вкладок */
