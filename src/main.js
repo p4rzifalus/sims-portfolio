@@ -9,7 +9,9 @@ import {
   animations,
   characterActions,
   panels as panelTexts,
+  welcome,
 } from './data.js';
+import { typoDeep } from './typo.js';
 import { buildRoom } from './room.js';
 import { createGrid, createDebugOverlay } from './grid.js';
 import { applyPS1, ps1Uniforms, PS1Pass, setOutlined } from './ps1.js';
@@ -19,6 +21,10 @@ import { createUI } from './ui.js';
 import { createRadialMenu } from './menu.js';
 import { createPanels } from './panels.js';
 import { performAction } from './actions.js';
+import { showWelcome } from './welcome.js';
+
+// Короткие слова во всех текстах приклеиваем к следующему слову (см. typo.js).
+typoDeep([ui, characterData, characterActions, panelTexts, furniture, welcome]);
 
 // ---------- Настройки вида (не контент, поэтому здесь, а не в data.js) ----------
 const CAMERA_ELEVATION = 30; // наклон камеры, градусы (0 — сбоку, 90 — сверху)
@@ -141,7 +147,9 @@ function setPS1(on) {
 }
 ps1Button.addEventListener('click', () => setPS1(!ps1On));
 
+document.title = ui.pageTitle;
 const debugHint = document.getElementById('debug-hint');
+debugHint.textContent = ui.gridHint;
 function toggleDebug() {
   debug.toggle();
   debugHint.classList.toggle('active', debug.visible);
@@ -205,6 +213,8 @@ Promise.all(characterData.map((data) => loadModel(data.model)))
       hud.setPortrait(data.id, portraits[data.id]);
     });
     select(characters[0].id);
+    // Письмо появляется, когда комната с персонажами уже на экране.
+    showWelcome(uiRoot, welcome, ui);
   })
   .catch((err) => console.error('Модель персонажа не загрузилась (проверьте поле model в data.js):', err));
 

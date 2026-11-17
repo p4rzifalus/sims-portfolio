@@ -2,6 +2,9 @@
 //  ВЕСЬ КОНТЕНТ САЙТА ЖИВЁТ ЗДЕСЬ.
 //  Этот файл можно править без знания кода. Правила:
 //   - текст всегда в кавычках: 'вот так'
+//   - все тексты на сайте — с маленькой буквы, аббревиатуры большими (PS1, ПИН, ИИ)
+//   - про висячие предлоги думать не нужно: короткие слова («в», «на», «и»…)
+//     сайт сам приклеит к следующему слову, чтобы они не оставались в конце строки
 //   - после каждой строки-параметра стоит запятая
 //   - цвета пишутся как в Figma: '#ff8800'
 //   - клетка комнаты — это пара чисел [столбец, ряд].
@@ -61,56 +64,56 @@ export const animations = {
 export const characters = [
   {
     id: 'p1',
-    name: 'Персонаж 1',
+    name: 'соня сурм',
     model: 'character-female-a',
     color: '#e8833a',
     startCell: [2, 3], // где стоит при открытии сайта (номера клеток видны по клавише G)
     startFacing: 'south',
     traits: [
-      { icon: '🎨', label: 'Дизайнер' },
-      { icon: '☕', label: 'Кофеман' },
-      { icon: '🌙', label: 'Сова' },
-      { icon: '🎮', label: 'Геймер' },
+      { icon: '🎨', label: 'дизайнер' },
+      { icon: '☕', label: 'кофеман' },
+      { icon: '🌙', label: 'сова' },
+      { icon: '🎮', label: 'геймер' },
     ],
     about:
-      'Здесь будет короткий рассказ о первом человеке: чем занимается, что любит, как с ним работать.',
+      'здесь будет короткий рассказ о первом человеке: чем занимается, что любит, как с ним работать.',
     works: [
-      { title: 'Работа 1', description: 'Короткое описание', image: '', url: '' },
-      { title: 'Работа 2', description: 'Короткое описание', image: '', url: '' },
-      { title: 'Работа 3', description: 'Короткое описание', image: '', url: '' },
-      { title: 'Работа 4', description: 'Короткое описание', image: '', url: '' },
-      { title: 'Работа 5', description: 'Короткое описание', image: '', url: '' },
-      { title: 'Работа 6', description: 'Короткое описание', image: '', url: '' },
+      { title: 'работа 1', description: 'короткое описание', image: '', url: '' },
+      { title: 'работа 2', description: 'короткое описание', image: '', url: '' },
+      { title: 'работа 3', description: 'короткое описание', image: '', url: '' },
+      { title: 'работа 4', description: 'короткое описание', image: '', url: '' },
+      { title: 'работа 5', description: 'короткое описание', image: '', url: '' },
+      { title: 'работа 6', description: 'короткое описание', image: '', url: '' },
     ],
     links: [
-      { label: 'Telegram', url: 'https://example.com' },
-      { label: 'Behance', url: 'https://example.com' },
-      { label: 'Почта', url: 'mailto:hello@example.com' },
+      { label: 'telegram', url: 'https://example.com' },
+      { label: 'behance', url: 'https://example.com' },
+      { label: 'почта', url: 'mailto:hello@example.com' },
     ],
   },
   {
     id: 'p2',
-    name: 'Персонаж 2',
+    name: 'паша архангельский',
     model: 'character-male-a',
     color: '#4aa3c7',
     startCell: [4, 2],
     startFacing: 'south',
     traits: [
-      { icon: '💻', label: 'Разработчик' },
-      { icon: '🎧', label: 'Меломан' },
-      { icon: '🌱', label: 'Садовод' },
+      { icon: '💻', label: 'разработчик' },
+      { icon: '🎧', label: 'меломан' },
+      { icon: '🌱', label: 'садовод' },
     ],
     about:
-      'Здесь будет короткий рассказ о втором человеке: чем занимается, что любит, как с ним работать.',
+      'здесь будет короткий рассказ о втором человеке: чем занимается, что любит, как с ним работать.',
     works: [
-      { title: 'Работа 1', description: 'Короткое описание', image: '', url: '' },
-      { title: 'Работа 2', description: 'Короткое описание', image: '', url: '' },
-      { title: 'Работа 3', description: 'Короткое описание', image: '', url: '' },
-      { title: 'Работа 4', description: 'Короткое описание', image: '', url: '' },
+      { title: 'работа 1', description: 'короткое описание', image: '', url: '' },
+      { title: 'работа 2', description: 'короткое описание', image: '', url: '' },
+      { title: 'работа 3', description: 'короткое описание', image: '', url: '' },
+      { title: 'работа 4', description: 'короткое описание', image: '', url: '' },
     ],
     links: [
-      { label: 'GitHub', url: 'https://example.com' },
-      { label: 'Telegram', url: 'https://example.com' },
+      { label: 'github', url: 'https://example.com' },
+      { label: 'telegram', url: 'https://example.com' },
     ],
   },
 ];
@@ -120,17 +123,17 @@ export const characters = [
 // who: 'target' — действие выполняет тот, по кому кликнули (он повернётся к зрителю),
 // и панель показывает его данные. Поля — те же, что у действий с мебелью (см. ниже).
 export const characterActions = [
-  { id: 'wave', label: 'Помахать', icon: '👋', who: 'target', animation: 'wave' },
-  { id: 'about', label: 'О себе', icon: '💬', who: 'target', panel: 'about' },
+  { id: 'wave', label: 'помахать', icon: '👋', who: 'target', animation: 'wave' },
+  { id: 'about', label: 'о себе', icon: '💬', who: 'target', panel: 'about' },
 ];
 
 // ---------- Виды панелей ----------
 // 'works' — сетка работ персонажа, 'links' — список его ссылок,
 // 'about' — текст «о себе».
 export const panels = {
-  works: { title: 'Работы' },
-  links: { title: 'Ссылки' },
-  about: { title: 'О себе' },
+  works: { title: 'работы' },
+  links: { title: 'ссылки' },
+  about: { title: 'о себе' },
 };
 
 // ---------- Мебель и предметы ----------
@@ -164,7 +167,7 @@ export const furniture = [
   {
     id: 'computer',
     type: 'computer',
-    name: 'Компьютер',
+    name: 'компьютер',
     cells: [[2, 0]], // стоит на столе
     onTopOf: 'desk',
     blocks: false,
@@ -172,7 +175,7 @@ export const furniture = [
     actions: [
       {
         id: 'show-works',
-        label: 'Показать работы',
+        label: 'показать работы',
         icon: '🖼️',
         goTo: [2, 2], // клетка позади стула
         face: 'north',
@@ -184,7 +187,7 @@ export const furniture = [
       },
       {
         id: 'show-links',
-        label: 'Ссылки',
+        label: 'ссылки',
         icon: '🔗',
         goTo: [2, 2], // клетка позади стула
         face: 'north',
@@ -213,7 +216,7 @@ export const furniture = [
   {
     id: 'sofa',
     type: 'sofa',
-    name: 'Диван',
+    name: 'диван',
     cells: [[0, 4], [0, 5]],
     blocks: true,
     facing: 'east',
@@ -225,7 +228,7 @@ export const furniture = [
     // actions: [
     //   {
     //     id: 'rest',
-    //     label: 'Отдохнуть',
+    //     label: 'отдохнуть',
     //     icon: '🛋️',
     //     goTo: [1, 4],
     //     face: 'west',
@@ -263,11 +266,23 @@ export const furniture = [
 export const ui = {
   ps1On: 'PS1: вкл',
   ps1Off: 'PS1: выкл',
-  busy: 'Занято',
-  cancel: 'Отменить',
-  traitsTitle: 'Черты', // заголовок над чертами в нижней панели
-  walking: 'Идёт', // что написано в нижней панели, пока персонаж идёт
-  idle: 'Свободен', // …и когда он ничем не занят
-  close: 'Закрыть',
+  busy: 'занято',
+  cancel: 'отменить',
+  traitsTitle: 'черты', // заголовок над чертами в нижней панели
+  walking: 'идёт', // что написано в нижней панели, пока персонаж идёт
+  idle: 'свободен', // …и когда он ничем не занят
+  close: 'закрыть',
+  gridHint: 'G — сетка', // кнопка отладочной сетки в правом верхнем углу
+  pageTitle: 'домик щелочи', // название вкладки браузера
   clock24h: true, // true — 14:05, false — 2:05 pm
+};
+
+// ---------- Письмо-приветствие ----------
+// Появляется в правом верхнем углу, когда сайт открылся. Закрывается крестиком.
+export const welcome = {
+  show: true, // false — не показывать письмо
+  delay: 1.5, // через сколько секунд после открытия сайта оно появится
+  icon: '✉️',
+  title: 'письмо',
+  text: 'это комната сони сурм и паши архангельского. кликни по компьютерам, чтобы посмотреть работы',
 };

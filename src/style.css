@@ -246,8 +246,6 @@ body {
   font-weight: bold;
   text-align: center;
   margin-bottom: 6px;
-  text-transform: uppercase;
-  letter-spacing: 1px;
   opacity: 0.8;
 }
 .hud-traits-list {
@@ -529,4 +527,79 @@ a.work-card:hover {
 }
 .cell-label.blocked {
   color: #ffb0b8;
+}
+
+/* ---------- Письмо-приветствие (правый верхний угол, под кнопками) ---------- */
+.notice {
+  pointer-events: auto;
+  position: absolute;
+  z-index: 12;
+  top: 84px;
+  right: 12px;
+  width: min(300px, 40vw);
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 12px 14px 12px;
+  border-radius: 20px;
+  background: linear-gradient(180deg, #e9f0ff, #c3d4f7);
+  color: #1f2f6e;
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 4px var(--ui-blue), 0 8px 24px rgba(0, 0, 0, 0.45);
+  animation: notice-in 0.45s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+.notice.leaving {
+  animation: notice-out 0.25s ease-in both;
+}
+@keyframes notice-in {
+  from {
+    opacity: 0;
+    translate: 60px 0;
+  }
+}
+@keyframes notice-out {
+  to {
+    opacity: 0;
+    translate: 60px 0;
+  }
+}
+.notice-icon {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background: radial-gradient(circle at 40% 35%, #b9ccf6, var(--ui-blue));
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.25);
+}
+.notice-body {
+  flex: 1;
+  min-width: 0;
+  padding-top: 2px;
+}
+.notice-title {
+  font-size: 15px;
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+.notice-text {
+  font-size: 14px;
+  line-height: 1.35;
+}
+.notice-x {
+  width: 24px;
+  height: 24px;
+  flex: none;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background: #d8413a;
+  color: #fff;
+  font: bold 11px/1 system-ui, sans-serif;
+  cursor: pointer;
+}
+.notice-x:hover {
+  filter: brightness(1.15);
 }

@@ -1,5 +1,6 @@
 // Панели с контентом: работы, ссылки, «о себе». Данные — из data.js.
 // Панель не перекрывает всю сцену: можно переключить персонажа, пока она открыта.
+import { typo } from './typo.js';
 
 function el(tag, className, text) {
   const e = document.createElement(tag);
@@ -86,7 +87,7 @@ export function createPanels(root, { panels: panelTexts, ui: texts, getPortrait 
       const node = el('div', 'panel');
       node.style.setProperty('--accent', ch.color);
       const head = el('div', 'panel-head');
-      head.appendChild(el('div', 'panel-title', `${panelTexts[kind]?.title || kind} — ${ch.name}`));
+      head.appendChild(el('div', 'panel-title', typo(`${panelTexts[kind]?.title || kind} — ${ch.name}`)));
       const x = el('button', 'panel-x', '✕');
       x.type = 'button';
       x.title = texts.close;
