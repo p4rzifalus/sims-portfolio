@@ -4,6 +4,8 @@
 :root {
   /* хром */
   --chrome:
+    /* крупный белый засвет сверху: яркое пятно-эллипс, мягко гаснет к середине рамки */
+    radial-gradient(70% 46% at 42% 0%, #ffffff 0%, rgba(255, 255, 255, 0.97) 38%, rgba(255, 255, 255, 0.55) 70%, rgba(255, 255, 255, 0) 100%),
     radial-gradient(120% 60% at 15% 0%, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0) 60%),
     radial-gradient(80% 70% at 100% 100%, rgba(244, 170, 210, 0.55), rgba(244, 170, 210, 0) 70%),
     linear-gradient(165deg, #ffffff 0%, #eef0fa 14%, #f7d6e8 30%, #e3e6f4 46%, #f3cfe3 62%, #d3d7ec 78%, #b9bedb 100%);
@@ -33,8 +35,71 @@ body {
   height: 100%;
   overflow: hidden;
   background: #2a2438;
-  font-family: 'Trebuchet MS', system-ui, sans-serif;
+  /* Inter: только полужирный (600, обычный текст) и жирный (700, заголовки и кнопки),
+     буквы сдвинуты плотнее на 6% */
+  font-family: 'Inter', system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.06em;
   user-select: none;
+}
+/* кнопки и поля по умолчанию сбрасывают расстояние между буквами — возвращаем общее */
+button,
+input,
+select,
+textarea {
+  letter-spacing: inherit;
+}
+
+/* ---------- Заголовки: пиксельный шрифт 5by7 ----------
+   Буква нарисована на сетке, где пиксель = 0,1 размера шрифта, поэтому размер — 10 или 20 px:
+   тогда каждый пиксель буквы попадает ровно в пиксели экрана и края остаются чёткими.
+   Расстояние между буквами — родное (один пиксель), иначе буквы слипаются. */
+@font-face {
+  font-family: '5by7';
+  src: url('../fonts/5by7.ttf') format('truetype');
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: '5by7';
+  src: url('../fonts/5by7_b.ttf') format('truetype');
+  font-weight: 700;
+  font-display: swap;
+}
+.hud-title,
+.hud-name,
+.panel-title,
+.notice-title,
+.hud-tip-title {
+  --title-ink: var(--chrome-ink);
+  font-family: '5by7', monospace;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.1;
+}
+.hud-title,
+.hud-name,
+.panel-title,
+.notice-title {
+  font-size: 20px;
+}
+/* Блик с плашки заходит на буквы: верх букв высветлен, как будто на них тоже падает свет.
+   Градиент повторяется на каждой строке (1lh), поэтому и у переноса блик сверху.
+   Тень — через filter: у текста с градиентом обычная text-shadow просвечивала бы сквозь буквы. */
+.hud-title,
+.hud-name,
+.panel-title,
+.notice-title,
+.hud-tip-title {
+  background: linear-gradient(180deg,
+      color-mix(in srgb, var(--title-ink) 35%, #fff) 0%,
+      color-mix(in srgb, var(--title-ink) 55%, #fff) 30%,
+      var(--title-ink) 52%,
+      var(--title-ink) 100%) 0 0 / 100% 1lh repeat-y;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.9));
 }
 
 #app,
@@ -403,20 +468,23 @@ body {
   width: 64px;
   height: 64px;
   padding: 0;
+  /* как остальные кнопки: голубой глянец, тёмно-синяя обводка, тень снизу */
   border-radius: 16px;
-  border: 2px solid var(--blue-b-edge);
-  background: var(--blue-b);
-  box-shadow: var(--blue-b-inset);
+  border: 2px solid var(--blue-a-edge);
+  background: var(--blue-a);
+  box-shadow: 0 3px 6px rgba(30, 30, 100, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.8);
   overflow: hidden;
   cursor: pointer;
-  transition: transform 0.12s, box-shadow 0.12s, border-color 0.12s;
 }
 .portrait:hover {
-  transform: scale(1.06);
+  background: var(--blue-a-hover);
 }
+.portrait:active {
+  transform: translateY(1px);
+}
+/* выбранный — без свечения: белый кант и ровное кольцо цвета персонажа */
 .portrait.selected {
-  border-color: #fff;
-  box-shadow: 0 0 0 3px var(--accent), 0 0 18px 4px var(--accent);
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--accent), 0 3px 6px rgba(30, 30, 100, 0.35);
 }
 
 /* ---------- Нижняя панель ----------
@@ -465,11 +533,8 @@ body {
   height: 180px;
 }
 .hud-title {
-  font-size: 15px;
-  font-weight: bold;
   text-align: center;
   margin-bottom: 6px;
-  text-shadow: 0 1px 0 #fff;
 }
 
 /* Блок с портретом */
@@ -482,10 +547,7 @@ body {
   flex: none;
 }
 .hud-name {
-  font-size: 17px;
-  font-weight: bold;
-  color: var(--blue-a-edge);
-  text-shadow: 0 1px 0 #fff, 0 0 6px #fff;
+  --title-ink: var(--blue-a-edge);
   white-space: nowrap;
 }
 .hud-me-row {
@@ -769,8 +831,8 @@ body {
   transform: none;
 }
 .hud-tip-title {
-  font-size: 13px;
-  font-weight: bold;
+  font-size: 10px; /* в пиксельном шрифте 10 px — один пиксель буквы на пиксель экрана */
+  margin-bottom: 2px;
 }
 .hud-tip-text {
   font-size: 12px;
@@ -845,7 +907,6 @@ body {
   }
   .hud-name {
     grid-area: n;
-    font-size: 16px;
     overflow: hidden;
     text-overflow: ellipsis;
   }
@@ -1100,9 +1161,7 @@ body {
   color: var(--blue-b-ink);
 }
 .panel-title {
-  font-size: 18px;
-  font-weight: bold;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.55);
+  --title-ink: var(--blue-b-ink);
 }
 .panel-x {
   width: 30px;
@@ -1308,8 +1367,6 @@ a.work-card:hover {
   padding-top: 2px;
 }
 .notice-title {
-  font-size: 15px;
-  font-weight: bold;
   margin-bottom: 4px;
 }
 .notice-text {
@@ -1420,7 +1477,7 @@ a.work-card:hover {
 .link-row .link-note {
   white-space: nowrap;
   font-size: 13px;
-  font-weight: normal;
+  font-weight: 600;
   opacity: 0.75;
 }
 

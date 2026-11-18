@@ -1,4 +1,9 @@
 // Точка входа: собирает сцену, камеру, PS1-эффект и запускает отрисовку.
+// Шрифт интерфейса — Inter, лежит в самом сайте (без загрузки с чужих серверов): полужирный и жирный.
+import '@fontsource/inter/cyrillic-600.css';
+import '@fontsource/inter/latin-600.css';
+import '@fontsource/inter/cyrillic-700.css';
+import '@fontsource/inter/latin-700.css';
 import * as THREE from 'three';
 import {
   room,
