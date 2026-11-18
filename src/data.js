@@ -180,7 +180,6 @@ export const dossier = {
 // и панель показывает его данные. Поля — те же, что у действий с мебелью (см. ниже).
 export const characterActions = [
   { id: 'wave', label: 'помахать', icon: '👋', who: 'target', animation: 'wave' },
-  { id: 'about', label: 'о себе', icon: '💬', who: 'target', panel: 'about' },
 ];
 
 // ---------- Взаимодействия персонажей ----------
@@ -236,7 +235,6 @@ export const social = {
         { id: 'gemini', label: 'gemini', icon: '✨' },
       ],
     },
-    { id: 'about', label: 'о себе', icon: '💬', who: 'target', panel: 'about' },
     { id: 'select', label: 'выбрать', icon: '👆', select: true },
   ],
 };
@@ -343,18 +341,6 @@ export const furniture = [
         panelDelay: 1,
         occupies: true,
       },
-      {
-        id: 'show-links',
-        label: 'ссылки',
-        icon: '🔗',
-        goTo: [3, 2],
-        face: 'north',
-        animation: 'sit',
-        sitOn: 'chair-1',
-        panel: 'links',
-        panelDelay: 1,
-        occupies: true,
-      },
     ],
   },
   {
@@ -376,18 +362,6 @@ export const furniture = [
         animation: 'sit',
         sitOn: 'chair-2',
         panel: 'works',
-        panelDelay: 1,
-        occupies: true,
-      },
-      {
-        id: 'show-links',
-        label: 'ссылки',
-        icon: '🔗',
-        goTo: [5, 2],
-        face: 'north',
-        animation: 'sit',
-        sitOn: 'chair-2',
-        panel: 'links',
         panelDelay: 1,
         occupies: true,
       },
