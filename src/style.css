@@ -944,11 +944,13 @@ textarea {
     padding: 0 16px;
   }
   .hud-mtabs button {
-    flex: 1;
-    padding: 6px 4px 8px;
-    font: inherit;
-    font-size: 14px;
-    font-weight: bold;
+    /* пиксельный 5by7, как заголовки. 20 px не влезает («потребности» — 132 px),
+       15 px — точка буквы 1,5 px: на экранах телефонов (плотность 2–3) всё равно чётко.
+       Ширина вкладки — по длине слова, чтобы длинное слово не упиралось в края. */
+    flex: 1 1 auto;
+    padding: 7px 6px 8px;
+    font: 700 15px/1 '5by7', monospace;
+    letter-spacing: 0;
     color: #fff;
     border: 2px solid var(--blue-b-edge);
     border-bottom: 0;
