@@ -1,7 +1,12 @@
 // Комната и мебель. Всё собирается из простых коробок и цилиндров
 // по описанию из data.js: где стоит предмет, сколько клеток занимает, куда смотрит.
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import * as tex from './textures.js';
+import { applyPS1 } from './ps1.js';
+
+// Готовые модели мебели (поле model в data.js) — в public/models/, путь от адреса сайта.
+const MODELS_DIR = `${import.meta.env.BASE_URL}models/`;
 
 // Направление «лицом к» → поворот вокруг вертикальной оси.
 // В своей системе координат каждый предмет смотрит на +Z («на юг»).
@@ -426,6 +431,31 @@ const builders = {
   },
 };
 
+// Модель из файла (поле model в data.js) вместо коробок. Пока файл грузится, стоит
+// заглушка из builders; потом её детали заменяются моделью, а сама группа (место,
+// поворот, furnitureId для кликов) остаётся прежней. Модель уже подогнана под клетки
+// скриптом tools/blender/furniture.py — здесь ничего не масштабируем.
+function loadFurnitureModel(obj, item) {
+  new GLTFLoader()
+    .loadAsync(MODELS_DIR + item.model)
+    .then((gltf) => {
+      gltf.scene.traverse((o) => {
+        if (!o.isMesh) return;
+        const map = o.material.map;
+        if (map) {
+          map.magFilter = THREE.NearestFilter; // чёткие пиксели текстуры
+          map.minFilter = THREE.NearestFilter;
+          map.generateMipmaps = false;
+        }
+        o.material = lambert({ map }); // тот же свет, что у остальной комнаты
+      });
+      applyPS1(gltf.scene);
+      obj.clear();
+      obj.add(gltf.scene);
+    })
+    .catch((e) => console.warn(`Не загрузилась модель «${item.model}», остаётся заглушка.`, e));
+}
+
 // ---------- Сборка комнаты ----------
 export function buildRoom(room, furniture) {
   const group = new THREE.Group();
@@ -540,6 +570,7 @@ export function buildRoom(room, furniture) {
     obj.userData = { furnitureId: item.id, interactive: Boolean(item.actions || item.closeUp) };
     objects[item.id] = obj;
     group.add(obj);
+    if (item.model) loadFurnitureModel(obj, item);
   }
 
   return { group, lights, objects };
