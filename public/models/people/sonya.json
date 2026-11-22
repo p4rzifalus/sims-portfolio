@@ -13,6 +13,9 @@
     "sit": true,
     "standUp": false,
     "type": true,
-    "wave": false
+    "wave": false,
+    "talk": true,
+    "dance": true,
+    "reach": false
   }
 }

@@ -205,6 +205,8 @@ export const social = {
       banner: '{actor} и {target} болтают обо всём на свете',
       actorStatus: 'болтает',
       targetStatus: 'болтает',
+      actorAnimation: 'talk', // движение того, кто начал (если у модели оно есть)
+      targetAnimation: 'talk', // …и того, с кем взаимодействуют
     },
     {
       id: 'tickle',
@@ -213,6 +215,7 @@ export const social = {
       banner: '{actor} щекочет {target.acc}, а {target} хохочет',
       actorStatus: 'щекочет',
       targetStatus: 'хохочет',
+      targetAnimation: 'laugh', // движения пока нет — бэклог
     },
     {
       id: 'dance',
@@ -221,6 +224,8 @@ export const social = {
       banner: '{actor} и {target} танцуют',
       actorStatus: 'танцует',
       targetStatus: 'танцует',
+      actorAnimation: 'dance',
+      targetAnimation: 'dance',
     },
     {
       id: 'gift',

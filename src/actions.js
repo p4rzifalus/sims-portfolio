@@ -162,6 +162,17 @@ export function performSocial({ actor, target, action, choice, grid, banners, ge
     // 3. Повернуться друг к другу
     await task.step(Promise.all([actor.faceTo(yawTo(actor, target)), target.faceTo(yawTo(target, actor))]));
 
+    // 3½. Движения на время взаимодействия (если они есть у модели; у Kenney их нет — просто стоят)
+    const moving = [
+      [actor, action.actorAnimation],
+      [target, action.targetAnimation],
+    ].filter(([ch, key]) => key && ch.actions[ch.anim[key]] && ch.play(key, 0.3));
+    task.onCleanup(() =>
+      moving.forEach(([ch, key]) => {
+        if (ch.current === ch.actions[ch.anim[key]]) ch.play('idle', 0.3);
+      }),
+    );
+
     // 4. Баннер
     const closeBanner = banners.show({
       icon: choice?.icon || action.icon,
