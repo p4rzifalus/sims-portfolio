@@ -216,7 +216,7 @@ debug.setVisible(false);
 const ps1Button = document.getElementById('ps1-toggle');
 function setPS1(on) {
   ps1On = on;
-  ps1Uniforms.uSnapOn.value = on ? 1 : 0;
+  ps1Uniforms.uSnapOn.value = on && ps1.vertexSnap > 0 ? 1 : 0; // vertexSnap: 0 — без дрожания
   pass.setMode(on);
   ps1Button.textContent = on ? ui.ps1On : ui.ps1Off;
   ps1Button.classList.toggle('off', !on);
