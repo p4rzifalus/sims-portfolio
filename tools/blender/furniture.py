@@ -29,8 +29,13 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 #   front   — куда смотрит перед исходника в Blender ('-Y', '+Y', '-X', '+X')
 #   tris    — бюджет треугольников
 #   tex     — размер текстуры
+#   center  — True: по центру рамки и по глубине тоже (для статуй и примерки персонажей), back не нужен
+#   out     — куда сохранить, от public/models/ (по умолчанию furniture/<имя>.glb)
 ASSETS = {
     "sofa": dict(cells=(2, 1), scale=1.625, back=0.03, front="-Y", tris=700, tex=128),
+    # примерка роста: соня без скелета, рост 1.5 клетки (как SCALE у персонажей)
+    "sonya": dict(cells=(1, 1), scale=1.5 / 1.157, center=True, front="-Y", tris=1500, tex=256,
+                  out="people/sonya-static.glb"),
 }
 
 FRONT_ROT = {"-Y": 0, "+X": 90, "+Y": 180, "-X": -90}  # поворот вокруг Z, чтобы перед смотрел в −Y
@@ -75,7 +80,8 @@ def load_source(path, cfg):
     # место: по центру по X, спинка (+Y) у задней границы рамки, низ на z = 0
     lo, hi = world_bounds(src)
     w, d = cfg["cells"]
-    shift = Vector((-(lo[0] + hi[0]) / 2, (d / 2 - cfg["back"]) - hi[1], -lo[2]))
+    y = -(lo[1] + hi[1]) / 2 if cfg.get("center") else (d / 2 - cfg["back"]) - hi[1]
+    shift = Vector((-(lo[0] + hi[0]) / 2, y, -lo[2]))
     src.location += shift
     bpy.ops.object.transform_apply(location=True)
     lo, hi = world_bounds(src)
@@ -259,7 +265,7 @@ def main():
     os.makedirs(os.path.dirname(img.filepath_raw), exist_ok=True)
     img.file_format = "PNG"
     img.save()
-    export(low, os.path.join(ROOT, "public", "models", "furniture", name + ".glb"))
+    export(low, os.path.join(ROOT, "public", "models", cfg.get("out", f"furniture/{name}.glb")))
     preview(src, low, img, os.path.join(ROOT, "models-src", name, "5-ps1"), name)
 
 
