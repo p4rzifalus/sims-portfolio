@@ -48,7 +48,9 @@ function cylinder(rTop, rBottom, h, mat, x = 0, y = 0, z = 0, segments = 8) {
 const SEATS = {
   chair: { height: 0.49, forward: 0.12, approach: -0.45 },
   designChair: { height: 0.49, forward: 0.12, approach: -0.45 },
-  sofa: { height: 0.46, forward: 0.055, approach: 0.55 },
+  // rigForward — насколько ещё вперёд садятся свои модели (у человека нормальных пропорций
+  // ноги длиннее, чем у Kenney: на глубоком диване иначе голени уходят в его перед)
+  sofa: { height: 0.46, forward: 0.055, approach: 0.55, rigForward: 0.15 },
 };
 
 // Точка посадки на предмет: { position, approach, yaw }. Для длинных предметов (диван)
@@ -68,6 +70,7 @@ export function seatPoint(item, nearCell) {
   return {
     position: new THREE.Vector3(x, seat.height, z),
     approach: new THREE.Vector3(x + fx * seat.approach, 0, z + fz * seat.approach),
+    rigForward: seat.rigForward || 0,
     yaw,
   };
 }

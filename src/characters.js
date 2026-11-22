@@ -365,7 +365,7 @@ export class Character {
     if (this.rig) {
       // своя модель: попа в позе sit на высоте rig.sitSeat над точкой персонажа
       to.y += -this.rig.sitSeat;
-      const back = SIT_BACK_RIG + (this.rig.sitHipsY || 0);
+      const back = SIT_BACK_RIG + (this.rig.sitHipsY || 0) - (seat.rigForward || 0);
       to.x -= Math.sin(seat.yaw) * back;
       to.z -= Math.cos(seat.yaw) * back;
       if (this.actions.sitDown) {
