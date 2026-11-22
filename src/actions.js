@@ -60,6 +60,8 @@ export function performAction({ actor, action, item, target, furniture, occupanc
     if (sits) {
       task.onCleanup(() => actor.standUp()); // «встать» — при любом завершении
       await task.step(actor.sitDown(seatPoint(seatItem, goTo)));
+      // сидя — своё движение (например, печатает за макбуком), если оно есть у модели
+      if (action.sitPose && actor.actions[actor.anim[action.sitPose]]) actor.play(action.sitPose, 0.4);
     } else if (action.animation === 'wave') {
       task.onCleanup(() => actor.stopWave());
       await task.step(actor.wave());

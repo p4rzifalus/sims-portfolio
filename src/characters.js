@@ -1,5 +1,11 @@
-// Персонажи: лоу-поли люди Kenney Mini Characters (CC0) со своими анимациями
-// и ходьбой по клеткам. Модель выбирается в data.js (поле model).
+// Персонажи и ходьба по клеткам. Модель выбирается в data.js (поле model).
+// Два вида моделей:
+//  • Kenney Mini Characters (CC0) — названия движений из data.js (animations), часть движений
+//    (взмах, руки с ноутбуком) сделана кодом поверх анимации;
+//  • свои PS1-модели со скелетом и движениями из Mixamo (этап 16–17, tools/blender/character.py) —
+//    рядом с glb лежит <имя>.json с замерами («рига»): скорость шага, высота посадки, список движений.
+//    Движения называются как ключи на сайте (idle, walk, sit, sitDown, standUp, type, wave),
+//    руки кодом не докручиваются. Чего нет в списке — то не играется (см. бэклог в PLAN.md).
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
@@ -63,6 +69,15 @@ const SIT_LIFT = 0.02; // насколько выше сиденья точка 
 const SIT_BACK = -0.06; // сдвиг назад к спинке (минус — вперёд, чтобы спинка стула не тонула в спине)
 const SHADOW_Y = 0.035; // тень всегда на полу, чуть выше ковра
 const SIT_TIME = 0.4; // сколько длится «сесть» и «встать», секунды
+// Свои модели: движение «садится» сначала стоит, потом опускается — к сиденью едем
+// с этой доли движения. SIT_BACK_RIG — сдвиг к спинке (плюс — назад).
+const SIT_START = 0.25;
+const SIT_BACK_RIG = 0.0;
+// Ноутбук у своих моделей: под кистями в позе «печатает» (ниже кистей и чуть дальше от себя).
+const LAPTOP_RIG = { below: -0.06, forward: 0.06 };
+
+// Масштаб модели: Kenney — по росту, свои модели уже в клетках.
+export const modelScale = (gltf) => (gltf.userData.rig ? 1 : SCALE);
 
 // Сигнал «действие отменили».
 export class Cancelled extends Error {}
@@ -92,9 +107,14 @@ class Task {
 const cache = new Map();
 export function loadModel(name) {
   if (!cache.has(name)) {
+    // Замеры своей модели (если их нет — это модель Kenney).
+    const rig = fetch(`${MODELS_DIR}${name}.json`)
+      .then((r) => (r.ok ? r.json() : null))
+      .catch(() => null);
     cache.set(
       name,
-      new GLTFLoader().loadAsync(`${MODELS_DIR}${name}.glb`).then((gltf) => {
+      Promise.all([new GLTFLoader().loadAsync(`${MODELS_DIR}${name}.glb`), rig]).then(([gltf, rigInfo]) => {
+        gltf.userData.rig = rigInfo;
         // Текстура-палитра: чёткие пиксели, без размытия.
         gltf.scene.traverse((o) => {
           if (o.isMesh && o.material.map) {
@@ -164,8 +184,13 @@ export class Character {
     this.root.name = data.id;
 
     // Независимая копия модели (свой скелет) и свои материалы с простым освещением.
+    const rig = gltf.userData.rig;
+    this.rig = rig;
+    if (rig) this.anim = Object.fromEntries(Object.keys(rig.animations).map((k) => [k, k]));
+    this.walkSpeed = rig?.walkSpeed ?? WALK_SPEED;
+
     const model = SkeletonUtils.clone(gltf.scene);
-    model.scale.setScalar(SCALE);
+    model.scale.setScalar(modelScale(gltf));
     model.traverse((o) => {
       if (!o.isMesh) return;
       o.material = new THREE.MeshLambertMaterial({ map: o.material.map, color: o.material.color.clone() });
@@ -174,8 +199,11 @@ export class Character {
     applyPS1(model, ps1Settings.characterSnap);
     model.userData.characterId = data.id;
     this.model = model;
-    this.armRight = model.getObjectByName('arm-right');
-    this.armLeft = model.getObjectByName('arm-left');
+    // Руки: у Kenney — кости, которые докручиваются кодом; у своих моделей — кисти для предметов.
+    this.armRight = rig ? null : model.getObjectByName('arm-right');
+    this.armLeft = rig ? null : model.getObjectByName('arm-left');
+    this.hands = rig ? { right: model.getObjectByName('RightHandIndex1'), left: model.getObjectByName('LeftHandIndex1') } : null;
+    this.animStep = 0; // накопленное время для анимации «на двойках»
     this.arms = { ...ARMS.rest, typing: 0 }; // текущая поза рук поверх анимации
     this.armTween = null;
     this.prop = null; // что в руках: { kind, mesh, follow }
@@ -199,7 +227,11 @@ export class Character {
     this.actions = {};
     for (const clip of gltf.animations) {
       const action = this.mixer.clipAction(clip);
-      if (clip.name === animNames.walk) action.timeScale = WALK_TIME_SCALE;
+      if (!rig && clip.name === animNames.walk) action.timeScale = WALK_TIME_SCALE;
+      if (rig && rig.animations[clip.name] === false) {
+        action.setLoop(THREE.LoopOnce, 1);
+        action.clampWhenFinished = true;
+      }
       this.actions[clip.name] = action;
     }
     this.current = null;
@@ -226,7 +258,7 @@ export class Character {
 
   // Включить анимацию по ключу из data.js (idle, walk, sit…) с плавным переходом.
   play(key, fade = FADE) {
-    if (key === 'wave') return this.wave();
+    if (key === 'wave' && !this.rig) return this.wave(); // у Kenney взмах — кодом
     const action = this.actions[this.anim[key]];
     if (!action || action === this.current) return action;
     action.reset();
@@ -239,6 +271,14 @@ export class Character {
 
   // Помахать правой рукой. Возвращает обещание, которое выполнится, когда рука опустится.
   wave() {
+    if (this.rig) {
+      if (!this.actions.wave) return Promise.resolve();
+      const len = this.playOnce('wave');
+      const gen = (this.waveGen = (this.waveGen || 0) + 1);
+      return this.wait(len).then(() => {
+        if (gen === this.waveGen && this.current === this.actions.wave) this.play('idle', 0.3);
+      });
+    }
     return new Promise((resolve) => {
       this.waving?.resolve();
       this.waving = { t: 0, resolve };
@@ -317,12 +357,29 @@ export class Character {
     if (dist > 0.02) {
       this.targetYaw = Math.atan2(dx, dz);
       this.play('walk');
-      await this.tweenTo(seat.approach, dist / WALK_SPEED, false);
+      await this.tweenTo(seat.approach, dist / this.walkSpeed, false);
     }
     // Повернуться и опуститься на сиденье
     this.targetYaw = seat.yaw;
-    this.play('sit', 0.3);
     const to = seat.position.clone();
+    if (this.rig) {
+      // своя модель: попа в позе sit на высоте rig.sitSeat над точкой персонажа
+      to.y += -this.rig.sitSeat;
+      const back = SIT_BACK_RIG + (this.rig.sitHipsY || 0);
+      to.x -= Math.sin(seat.yaw) * back;
+      to.z -= Math.cos(seat.yaw) * back;
+      if (this.actions.sitDown) {
+        const len = this.playOnce('sitDown');
+        await this.wait(len * SIT_START);
+        await this.tweenTo(to, len * (1 - SIT_START) * 0.9);
+        this.play('sit', 0.2);
+      } else {
+        this.play('sit', 0.3);
+        await this.tweenTo(to, SIT_TIME);
+      }
+      return;
+    }
+    this.play('sit', 0.3);
     to.y += SIT_LIFT;
     to.x -= Math.sin(seat.yaw) * SIT_BACK;
     to.z -= Math.cos(seat.yaw) * SIT_BACK;
@@ -332,6 +389,14 @@ export class Character {
   // Встать (своей анимации «встать» в наборе нет — плавный переход sit → idle).
   async standUp() {
     if (!this.standSpot) return;
+    if (this.rig && this.actions.standUp) {
+      const len = this.playOnce('standUp');
+      await this.tweenTo(this.standSpot, len * 0.6);
+      await this.wait(len * 0.35);
+      this.standSpot = null;
+      this.play('idle', 0.3);
+      return;
+    }
     this.play('idle', 0.35);
     await this.tweenTo(this.standSpot, SIT_TIME);
     this.standSpot = null;
@@ -346,6 +411,7 @@ export class Character {
 
   // Плавно перевести руки в позу из ARMS.
   poseArms(pose, duration = 0.4) {
+    if (this.rig) return Promise.resolve(); // у своих моделей руки двигает только анимация
     const from = { forward: this.arms.forward, up: this.arms.up };
     const to = ARMS[pose];
     return this.animate(duration, (k) => {
@@ -357,6 +423,10 @@ export class Character {
 
   // Точка кисти (side: 'left' | 'right') в системе персонажа.
   handPoint(side, target = new THREE.Vector3()) {
+    if (this.hands) {
+      this.hands[side].getWorldPosition(target);
+      return this.root.worldToLocal(target);
+    }
     const bone = side === 'right' ? this.armRight : this.armLeft;
     target.set(side === 'right' ? -HAND : HAND, 0, 0).applyMatrix4(bone.matrixWorld);
     return this.root.worldToLocal(target);
@@ -399,8 +469,10 @@ export class Character {
       book.mesh.rotation.x = BOOK_TILT;
       await this.wait(len * 0.55);
       if (!alive()) return;
-      this.play('hold', 0.25);
-      book.follow = 'both';
+      if (this.actions[this.anim.hold]) {
+        this.play('hold', 0.25);
+        book.follow = 'both';
+      }
       return;
     }
     if (kind === 'laptop') {
@@ -428,6 +500,17 @@ export class Character {
       await this.animate(0.35, (k) => (lid.rotation.x = LAPTOP.open * smooth(k)));
       if (!alive()) return;
       await this.animate(0.3, (k) => (this.arms.typing = k));
+      if (this.rig && this.actions.type) {
+        this.play('type', 0.4);
+        // ноутбук — под кистями: в позе «печатает» руки вытянуты вперёд
+        await this.wait(0.45);
+        if (!alive()) return;
+        this.root.updateMatrixWorld(true);
+        const mid = this.handPoint('right').add(this.handPoint('left')).multiplyScalar(0.5);
+        const from = mesh.position.clone();
+        const toLap = new THREE.Vector3(0, mid.y + LAPTOP_RIG.below, mid.z + LAPTOP_RIG.forward);
+        await this.animate(0.3, (k) => mesh.position.lerpVectors(from, toLap, smooth(k)));
+      }
     }
   }
 
@@ -458,6 +541,7 @@ export class Character {
       const lid = mesh.userData.lid;
       const from = mesh.position.clone();
       this.arms.typing = 0;
+      if (this.rig && this.current === this.actions.type) this.play('sit', 0.3);
       await this.animate(0.25, (k) => (lid.rotation.x = LAPTOP.open * (1 - smooth(k))));
       const arms = this.poseArms('behind', 0.4);
       await this.animate(0.4, (k) => mesh.position.lerpVectors(from, LAPTOP.behind, smooth(k)));
@@ -469,6 +553,11 @@ export class Character {
   }
 
   stopWave() {
+    if (this.rig) {
+      this.waveGen = (this.waveGen || 0) + 1;
+      if (this.current === this.actions.wave) this.play('idle', 0.25);
+      return;
+    }
     if (!this.waving) return;
     this.waving.resolve();
     this.waving = null;
@@ -524,10 +613,22 @@ export class Character {
       this.armRight.quaternion.copy(this.armBase.right);
       this.armLeft.quaternion.copy(this.armBase.left);
     }
-    this.mixer.update(dt);
-    this.armBase ||= { right: new THREE.Quaternion(), left: new THREE.Quaternion() };
-    this.armBase.right.copy(this.armRight.quaternion);
-    this.armBase.left.copy(this.armLeft.quaternion);
+    // Анимация «на двойках», как в играх PS1: поза меняется ступеньками (ps1.animationFps в data.js).
+    const fps = ps1Settings.animationFps;
+    if (fps && this.rig) {
+      this.animStep += dt;
+      if (this.animStep >= 1 / fps) {
+        this.mixer.update(this.animStep);
+        this.animStep = 0;
+      }
+    } else {
+      this.mixer.update(dt);
+    }
+    if (this.armRight) {
+      this.armBase ||= { right: new THREE.Quaternion(), left: new THREE.Quaternion() };
+      this.armBase.right.copy(this.armRight.quaternion);
+      this.armBase.left.copy(this.armLeft.quaternion);
+    }
 
     if (this.tween) {
       const tw = this.tween;
@@ -544,7 +645,7 @@ export class Character {
 
     if (this.path.length) {
       const pos = this.root.position;
-      let step = WALK_SPEED * dt;
+      let step = this.walkSpeed * dt;
       while (step > 0 && this.path.length) {
         const target = this.path[0];
         const dx = target.x - pos.x, dz = target.z - pos.z;
@@ -565,7 +666,7 @@ export class Character {
     }
 
     // Взмах рукой поверх анимации: плавно поднять, покачать, плавно опустить.
-    if (this.waving) {
+    if (this.waving && this.armRight) {
       const w = this.waving;
       w.t += dt;
       const k = smooth(Math.max(0, Math.min(1, w.t / WAVE.fade, (WAVE.duration - w.t) / WAVE.fade)));
@@ -592,7 +693,7 @@ export class Character {
     // Руки поверх анимации: вперёд/назад (ось Y кости) и в сторону (ось Z).
     // У правой руки «вперёд» — плюс, у левой — минус (руки зеркальны).
     const typing = this.arms.typing ? Math.sin(this.clock * ARMS.typeSpeed) * ARMS.typeSwing * this.arms.typing : 0;
-    if (this.arms.forward || this.arms.up || typing) {
+    if (this.armRight && (this.arms.forward || this.arms.up || typing)) {
       const q = new THREE.Quaternion();
       this.armRight.quaternion
         .multiply(q.setFromAxisAngle(Y_AXIS, this.arms.forward + typing))

@@ -42,6 +42,7 @@ export const ps1 = {
   fogColor: '#2a2438', // цвет тумана и фона вокруг комнаты
   fogStrength: 0.02, // плотность тумана (0 = нет тумана)
   cameraSway: true, // едва заметное покачивание камеры, чтобы дрожание было видно
+  animationFps: 15, // своих персонажей двигать «на двойках»: 15 поз в секунду (0 — плавно)
 };
 
 // ---------- Названия анимаций в файлах моделей ----------
@@ -70,7 +71,7 @@ export const characters = [
     name: 'соня сурм',
     // короткое имя в разных падежах — для баннеров взаимодействий («соня щекочет пашу»)
     forms: { nom: 'соня', gen: 'сони', dat: 'соне', acc: 'соню', ins: 'соней' },
-    model: 'character-female-a',
+    model: 'sonya', // своя PS1-модель (public/models/people/sonya.glb); прежняя — 'character-female-a'
     color: '#e8833a',
     startCell: [3, 4], // где стоит при открытии сайта (номера клеток видны по клавише G)
     startFacing: 'south',
@@ -289,6 +290,7 @@ export const panels = {
 //                    Персонаж выберет первую свободную; когда заняты все — «занято»
 //     animation    — что сделает: 'sit' (сесть) или 'wave' (помахать)
 //     sitOn        — на какой предмет сесть (его id), если animation: 'sit'.
+//     sitPose      — какое движение делать сидя (например 'type' — печатать); если у модели его нет — просто сидит
 //                    Когда действие закончится или его отменят, персонаж встанет сам.
 //     prop         — что достать: 'book' (книга с полки, стоя) или 'laptop'
 //                    (ноутбук из-за спины, сидя — и начать печатать)
@@ -339,6 +341,7 @@ export const furniture = [
         face: 'north',
         animation: 'sit',
         sitOn: 'chair-1',
+        sitPose: 'type', // сидя печатать (если у модели есть такое движение)
         panel: 'works',
         panelDelay: 1,
         occupies: true,
@@ -363,6 +366,7 @@ export const furniture = [
         face: 'north',
         animation: 'sit',
         sitOn: 'chair-2',
+        sitPose: 'type',
         panel: 'works',
         panelDelay: 1,
         occupies: true,

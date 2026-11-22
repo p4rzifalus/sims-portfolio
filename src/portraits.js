@@ -3,7 +3,7 @@
 // без сглаживания, как и сама сцена.
 import * as THREE from 'three';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import { SCALE } from './characters.js';
+import { modelScale } from './characters.js';
 
 const toSRGB = (v) => {
   const c = v / 255;
@@ -19,7 +19,7 @@ export function renderPortrait(renderer, gltf, size = 96) {
   scene.add(key);
 
   const model = SkeletonUtils.clone(gltf.scene);
-  model.scale.setScalar(SCALE);
+  model.scale.setScalar(modelScale(gltf));
   model.traverse((o) => {
     if (o.isMesh) o.material = new THREE.MeshLambertMaterial({ map: o.material.map, color: o.material.color.clone() });
   });
@@ -32,10 +32,19 @@ export function renderPortrait(renderer, gltf, size = 96) {
   }
   model.updateMatrixWorld(true);
 
-  // Голова — примерно от 0.66 до 1.5 по высоте. Камера чуть справа и сверху (вид 3/4).
   const camera = new THREE.PerspectiveCamera(22, 1, 0.1, 20);
-  camera.position.set(0.7, 1.3, 2.8);
-  camera.lookAt(0, 1.0, 0);
+  const head = model.getObjectByName('Head'); // своя модель (скелет Mixamo)
+  if (head) {
+    // Голова человека нормальных пропорций маленькая: камера ближе, целимся в лицо.
+    const p = head.getWorldPosition(new THREE.Vector3());
+    p.y += 0.09;
+    camera.position.set(p.x + 0.22, p.y + 0.06, p.z + 0.85);
+    camera.lookAt(p);
+  } else {
+    // Kenney: голова примерно от 0.66 до 1.5 по высоте. Камера чуть справа и сверху (вид 3/4).
+    camera.position.set(0.7, 1.3, 2.8);
+    camera.lookAt(0, 1.0, 0);
+  }
 
   const target = new THREE.WebGLRenderTarget(size, size);
   const prevTarget = renderer.getRenderTarget();
