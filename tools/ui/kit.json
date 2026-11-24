@@ -1,0 +1,71 @@
+{
+  "_": "n — номер детали на листе (см. node tools/ui/slice.mjs --find → ui-src/kit/2-find/), scale — уменьшение, slice — неизменяемые края рамки в пикселях исходника [сверху, справа, снизу, слева], group — состояния одной кнопки (холст одного размера). density 2 — картинки вдвое крупнее экранных пикселей (чётко на ретине).",
+  "key": { "lo": 12, "floor": 0.12 },
+  "gap": 14,
+  "minArea": 300,
+  "pad": 2,
+  "crush": true,
+  "hole": [0.18, 0.32],
+  "quality": 82,
+  "density": 2,
+  "sheets": {
+    "frames": {
+      "file": "1-frames.webp",
+      "scale": 0.5,
+      "parts": {
+        "frame": { "n": 0, "slice": [185, 200, 185, 200], "hole": { "rect": [50, 50, 50, 50] } },
+        "frame-velvet": { "n": 1, "slice": [185, 200, 185, 200], "hole": { "rect": [50, 50, 50, 50] } },
+        "frame-small": { "n": 2, "slice": [72, 80, 72, 80], "hole": { "rect": [30, 30, 30, 30] } },
+        "clamp": { "n": 3, "scale": 0.4 }
+      }
+    },
+    "wells": {
+      "file": "2-wells.webp",
+      "scale": 0.5,
+      "gap": 4,
+      "parts": {
+        "well": { "n": 0, "slice": [48, 48, 48, 48] },
+        "scroll-track": { "n": 1, "slice": [30, 0, 30, 0] },
+        "scroll-thumb": { "n": 2, "scale": 0.4 },
+        "bar": { "n": 3, "scale": 0.36, "slice": [0, 175, 0, 175] },
+        "tab": { "n": 4, "scale": 0.36, "group": "tab", "slice": [80, 160, 80, 160] },
+        "tab-active": { "n": 5, "scale": 0.36, "group": "tab", "slice": [80, 160, 80, 160] },
+        "clock": { "n": 6, "scale": 0.4, "slice": [60, 70, 60, 70] }
+      }
+    },
+    "buttons": {
+      "file": "3-buttons.webp",
+      "scale": 0.5,
+      "parts": {
+        "pill": { "n": 0, "group": "pill", "slice": [0, 90, 0, 90] },
+        "pill-disabled": { "n": 3, "group": "pill", "slice": [0, 90, 0, 90] },
+        "pill-on": { "n": 12, "group": "pill", "slice": [0, 90, 0, 90] },
+        "pill-off": { "n": 13, "group": "pill", "slice": [0, 90, 0, 90] },
+        "round": { "n": 4, "scale": 0.42, "group": "round" },
+        "round-disabled": { "n": 7, "scale": 0.42, "group": "round" },
+        "close": { "n": 8, "scale": 0.32, "group": "close" },
+        "close-disabled": { "n": 11, "scale": 0.32, "group": "close" },
+        "icon-play": { "n": 14, "scale": 0.36 },
+        "icon-pause": { "n": 15, "scale": 0.36 },
+        "icon-next": { "n": 16, "scale": 0.36 },
+        "icon-cross": { "n": 17, "scale": 0.36 }
+      }
+    },
+    "ornaments": {
+      "file": "4-ornaments.webp",
+      "scale": 0.5,
+      "parts": {
+        "thorns": { "n": 0, "scale": 0.45 },
+        "horns": { "n": 1, "scale": 0.4 },
+        "skull": { "n": 2, "scale": 0.4 },
+        "portrait-frame": { "n": 3, "scale": 0.6, "group": "portrait" },
+        "portrait-frame-selected": { "n": 4, "scale": 0.6, "group": "portrait", "hole": { "rect": [40, 40, 40, 40], "mode": "green" } },
+        "bone-ring": { "n": 5, "scale": 0.45 },
+        "bead": { "n": 6, "scale": 0.42 },
+        "bone-bar": { "n": 11, "scale": 0.25, "slice": [0, 70, 0, 70] }
+      }
+    },
+    "wood": { "file": "5-wood.webp", "tile": { "name": "wood", "x": 0, "y": 0, "size": 1000, "blend": 120, "out": 512 } },
+    "velvet": { "file": "6-velvet.webp", "tile": { "name": "velvet", "x": 500, "y": 0, "size": 1000, "blend": 120, "out": 512 } }
+  }
+}
