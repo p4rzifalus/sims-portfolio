@@ -15,7 +15,7 @@ export function createUI({ characters, texts, dossier, onSelect, onCancel }) {
   const root = document.getElementById('ui');
 
   // ---------- Колонка портретов ----------
-  const column = el('div', 'portraits');
+  const column = el('div', 'portraits skin-frame');
   const portraitButtons = {};
   for (const ch of characters) {
     const b = el('button', 'portrait');

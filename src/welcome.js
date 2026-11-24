@@ -11,16 +11,16 @@ function el(tag, className, text) {
 export function showWelcome(root, data, texts) {
   if (!data || !data.show) return;
 
-  const note = el('div', 'notice');
+  const note = el('div', 'notice skin-frame velvet');
   note.setAttribute('role', 'status');
 
-  note.appendChild(el('div', 'notice-icon', data.icon));
+  note.appendChild(el('div', 'notice-icon skin-round', data.icon));
   const body = el('div', 'notice-body');
   if (data.title) body.appendChild(el('div', 'notice-title', data.title));
   body.appendChild(el('div', 'notice-text', data.text));
   note.appendChild(body);
 
-  const x = el('button', 'notice-x', '✕');
+  const x = el('button', 'notice-x skin-close', '✕');
   x.type = 'button';
   x.title = texts.close;
   note.appendChild(x);

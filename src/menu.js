@@ -57,7 +57,7 @@ export function createRadialMenu(root, texts) {
       dot.style.animationDelay = `${i * 35}ms`;
       menu.appendChild(dot);
 
-      const pill = el('button', 'radial-pill' + (item.disabled ? ' disabled' : ''));
+      const pill = el('button', 'radial-pill pill' + (item.disabled ? ' disabled' : ''));
       pill.type = 'button';
       if (item.icon) pill.appendChild(el('span', 'radial-icon', item.icon));
       pill.appendChild(el('span', 'radial-label', item.label));
