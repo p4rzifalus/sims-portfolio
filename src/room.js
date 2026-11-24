@@ -1,7 +1,12 @@
 // Комната и мебель. Всё собирается из простых коробок и цилиндров
 // по описанию из data.js: где стоит предмет, сколько клеток занимает, куда смотрит.
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import * as tex from './textures.js';
+import { applyPS1 } from './ps1.js';
+
+// Готовые модели мебели (поле model в data.js) — в public/models/, путь от адреса сайта.
+const MODELS_DIR = `${import.meta.env.BASE_URL}models/`;
 
 // Направление «лицом к» → поворот вокруг вертикальной оси.
 // В своей системе координат каждый предмет смотрит на +Z («на юг»).
@@ -43,7 +48,9 @@ function cylinder(rTop, rBottom, h, mat, x = 0, y = 0, z = 0, segments = 8) {
 const SEATS = {
   chair: { height: 0.49, forward: 0.12, approach: -0.45 },
   designChair: { height: 0.49, forward: 0.12, approach: -0.45 },
-  sofa: { height: 0.46, forward: 0.055, approach: 0.55 },
+  // rigForward — насколько ещё вперёд садятся свои модели (у человека нормальных пропорций
+  // ноги длиннее, чем у Kenney: на глубоком диване иначе голени уходят в его перед)
+  sofa: { height: 0.46, forward: 0.055, approach: 0.55, rigForward: 0.15 },
 };
 
 // Точка посадки на предмет: { position, approach, yaw }. Для длинных предметов (диван)
@@ -63,6 +70,7 @@ export function seatPoint(item, nearCell) {
   return {
     position: new THREE.Vector3(x, seat.height, z),
     approach: new THREE.Vector3(x + fx * seat.approach, 0, z + fz * seat.approach),
+    rigForward: seat.rigForward || 0,
     yaw,
   };
 }
@@ -426,6 +434,31 @@ const builders = {
   },
 };
 
+// Модель из файла (поле model в data.js) вместо коробок. Пока файл грузится, стоит
+// заглушка из builders; потом её детали заменяются моделью, а сама группа (место,
+// поворот, furnitureId для кликов) остаётся прежней. Модель уже подогнана под клетки
+// скриптом tools/blender/furniture.py — здесь ничего не масштабируем.
+function loadFurnitureModel(obj, item) {
+  new GLTFLoader()
+    .loadAsync(MODELS_DIR + item.model)
+    .then((gltf) => {
+      gltf.scene.traverse((o) => {
+        if (!o.isMesh) return;
+        const map = o.material.map;
+        if (map) {
+          map.magFilter = THREE.NearestFilter; // чёткие пиксели текстуры
+          map.minFilter = THREE.NearestFilter;
+          map.generateMipmaps = false;
+        }
+        o.material = lambert({ map }); // тот же свет, что у остальной комнаты
+      });
+      applyPS1(gltf.scene);
+      obj.clear();
+      obj.add(gltf.scene);
+    })
+    .catch((e) => console.warn(`Не загрузилась модель «${item.model}», остаётся заглушка.`, e));
+}
+
 // ---------- Сборка комнаты ----------
 export function buildRoom(room, furniture) {
   const group = new THREE.Group();
@@ -540,6 +573,7 @@ export function buildRoom(room, furniture) {
     obj.userData = { furnitureId: item.id, interactive: Boolean(item.actions || item.closeUp) };
     objects[item.id] = obj;
     group.add(obj);
+    if (item.model) loadFurnitureModel(obj, item);
   }
 
   return { group, lights, objects };

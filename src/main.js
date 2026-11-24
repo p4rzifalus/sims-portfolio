@@ -47,9 +47,9 @@ const CLOSEUP_MARGINS = { left: 0.06, right: 0.06, top: 0.07, bottom: 0.17 };
 const CLOSEUP_TIME = 0.9; // сколько секунд камера едет к стене и обратно
 // Телефон (узкий экран, та же граница, что в style.css): комната крупнее — целиком
 // влезает по высоте, а по бокам немного обрезается. MOBILE_ZOOM — во сколько раз
-// комната шире экрана (стол и шкаф для одежды стоят так, чтобы при 1.3 влезать в кадр).
+// комната шире экрана (с комнатой 6×5 при 1.1 обрезаются только край шкафа и угол стола).
 const MOBILE = window.matchMedia('(max-width: 640px)');
-const MOBILE_ZOOM = 1.3;
+const MOBILE_ZOOM = 1.1;
 
 // ---------- Рендерер ----------
 // Сглаживание краёв делает сам проход PS1Pass (в режиме без PS1), поэтому здесь оно не нужно.
@@ -216,7 +216,7 @@ debug.setVisible(false);
 const ps1Button = document.getElementById('ps1-toggle');
 function setPS1(on) {
   ps1On = on;
-  ps1Uniforms.uSnapOn.value = on ? 1 : 0;
+  ps1Uniforms.uSnapOn.value = on && ps1.vertexSnap > 0 ? 1 : 0; // vertexSnap: 0 — без дрожания
   pass.setMode(on);
   ps1Button.textContent = on ? ui.ps1On : ui.ps1Off;
   ps1Button.classList.toggle('off', !on);
