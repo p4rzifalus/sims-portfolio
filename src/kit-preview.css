@@ -140,10 +140,17 @@ p { margin: 6px 0; font-size: 14px; }
 
 /* ---------- кнопки ---------- */
 button { font: inherit; letter-spacing: inherit; cursor: pointer; }
+/* Текст — по центру деревянной середины плашки, а не всей картинки: под плашкой в картинке
+   место для свечения, середина выше центра на ~1 px и правее на ~1 px; и строчные буквы
+   без заглавных выглядят ниже середины строки. Поэтому текст поднят на 2 px и сдвинут на 1 px. */
 .pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   height: 43px;
   min-width: 120px;
-  padding: 0 34px;
+  padding: 0 33px 4px 35px;
+  line-height: 1;
   background: none;
   color: #f0dcbc;
   font-size: 15px;

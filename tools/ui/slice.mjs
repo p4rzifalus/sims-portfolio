@@ -227,28 +227,49 @@ async function build() {
     }
     const img = await loadKeyed(file);
     const parts = findParts(img, conf.gap ?? kit.gap);
-    // Состояния одной кнопки — холсты одного размера (по самому большому), деталь по центру:
-    // тогда при смене картинки кнопка не прыгает, а свечение помещается.
+    // Состояния одной кнопки (group) — холсты одного размера, а сама плашка в них стоит
+    // в одной и той же точке. Выравниваем по плотной части детали («ядро» без свечения и
+    // мягких краёв): свечение у состояний разной формы, и по краям со свечением плашка в
+    // картинке наведения оказывалась выше — кнопка прыгала. Холст — по самому дальнему
+    // свечению во все стороны, поэтому ничего не обрезается.
+    const core = (b) => {
+      let x0 = b.x1, y0 = b.y1, x1 = b.x0, y1 = b.y0;
+      for (let y = b.y0; y <= b.y1; y++)
+        for (let x = b.x0; x <= b.x1; x++)
+          if (img.data[(y * img.w + x) * 4 + 3] > 230) {
+            if (x < x0) x0 = x; if (x > x1) x1 = x;
+            if (y < y0) y0 = y; if (y > y1) y1 = y;
+          }
+      return { x0, y0, x1, y1, cx: Math.round((x0 + x1) / 2), cy: Math.round((y0 + y1) / 2) };
+    };
     const groups = {};
     for (const p of Object.values(conf.parts))
       if (p.group) {
         const b = parts[p.n];
-        const g = (groups[p.group] ??= { w: 0, h: 0 });
-        g.w = Math.max(g.w, b.x1 - b.x0 + 1);
-        g.h = Math.max(g.h, b.y1 - b.y0 + 1);
+        const c = core(b);
+        const g = (groups[p.group] ??= { l: 0, r: 0, t: 0, b: 0, base: c });
+        g.l = Math.max(g.l, c.cx - b.x0);
+        g.r = Math.max(g.r, b.x1 - c.cx);
+        g.t = Math.max(g.t, c.cy - b.y0);
+        g.b = Math.max(g.b, b.y1 - c.cy);
       }
+    const groupDone = new Set();
     for (const [name, p] of Object.entries(conf.parts)) {
       let b = parts[p.n];
       if (!b) throw new Error(`${sheet}: нет детали №${p.n} для «${name}»`);
-      let dx = 0, dy = 0; // сдвиг детали внутри общего холста
+      let dx = 0, dy = 0; // где край детали внутри холста (для hole)
+      let sx = 0, sy = 0, coreBox = b; // от каких краёв считать slice
+      let g = null;
       if (p.group) {
-        const g = groups[p.group];
-        const cx = (b.x0 + b.x1) / 2, cy = (b.y0 + b.y1) / 2;
-        const nb = { x0: Math.round(cx - g.w / 2), y0: Math.round(cy - g.h / 2) };
-        nb.x1 = nb.x0 + g.w - 1;
-        nb.y1 = nb.y0 + g.h - 1;
+        g = groups[p.group];
+        const c = core(b);
+        const nb = { x0: c.cx - g.l, y0: c.cy - g.t, x1: c.cx + g.r, y1: c.cy + g.b };
         dx = b.x0 - nb.x0;
         dy = b.y0 - nb.y0;
+        // slice у группы — от краёв ядра первой детали группы, одинаковый у всех состояний
+        coreBox = g.base;
+        sx = g.l - (g.base.cx - g.base.x0);
+        sy = g.t - (g.base.cy - g.base.y0);
         b = nb;
       }
       const c = crop(img, b);
@@ -258,14 +279,22 @@ async function build() {
       report.push(`${name}: ${r.w}×${r.h}, ${r.kb} КБ`);
       total += r.kb;
       const D = kit.density;
+      const k = r.w / c.w;
       css.push(`  --ui-${name}: url('./${name}.webp');`, `  --ui-${name}-size: ${+(r.w / D).toFixed(1)}px ${+(r.h / D).toFixed(1)}px;`);
+      if (g && !groupDone.has(p.group)) {
+        // насколько ядро (плашка без свечения) выше середины холста — чтобы поставить текст
+        // по центру плашки, а не картинки: padding-bottom = 2 × shift
+        groupDone.add(p.group);
+        const shift = ((g.t + g.b) / 2 - g.t) * k / D;
+        css.push(`  --ui-${p.group}-shift: ${+shift.toFixed(1)}px;`);
+      }
       if (p.slice) {
         // нарезка рамки: сколько пикселей картинки от каждого края — неизменяемый угол/торец
-        // (в исходнике, от края детали), в CSS — в пикселях готовой картинки и экрана
+        // (в исходнике: от края детали, у группы — от края ядра), в CSS — в пикселях картинки и экрана
         const [t, rr, bb, l] = p.slice;
         const pad = kit.pad;
-        const k = r.w / c.w;
-        const out = [t + dy + pad, rr + dx + pad, bb + dy + pad, l + dx + pad].map((v) => Math.round(v * k));
+        const off = g ? [sy, sx, sy, sx] : [dy, dx, dy, dx];
+        const out = [t, rr, bb, l].map((v, i) => Math.round((v + off[i] + pad) * k));
         css.push(`  --ui-${name}-slice: ${out.join(' ')};`, `  --ui-${name}-w: ${out.map((v) => +(v / D).toFixed(1) + 'px').join(' ')};`);
       }
     }
