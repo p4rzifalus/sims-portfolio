@@ -63,7 +63,7 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(ps1.fogColor);
 scene.fog = new THREE.FogExp2(ps1.fogColor, ps1.fogStrength);
 
-const built = buildRoom(room, furniture);
+const built = buildRoom(room, furniture, lighting?.baked);
 applyPS1(built.group);
 scene.add(built.group);
 
@@ -483,6 +483,22 @@ window.addEventListener('keydown', (e) => {
 
 // ---------- Цикл отрисовки ----------
 let last = performance.now();
+// Мерцание ламп (этап 14): живой свет и ореолы чуть дрожат, изредка лампа «моргает».
+// Запечённый на стенах свет не мерцает — как в играх того времени.
+function flickerLamps(t) {
+  const amp = lighting?.flicker ?? 0;
+  built.lights.forEach((light, i) => {
+    const base = light.userData.base;
+    if (base === undefined) return;
+    const p = i * 17.3;
+    let k = 1 + amp * (Math.sin(t * 7.1 + p) * 0.5 + Math.sin(t * 13.7 + p * 2) * 0.3 + Math.sin(t * 29.3 + p) * 0.2);
+    if (amp && Math.sin(t * 0.37 + p) > 0.995) k *= 0.55; // редкое «моргание»
+    light.intensity = base * k;
+    const h = light.userData.halo;
+    if (h) h.material.opacity = Math.min(1, 0.85 * k);
+  });
+}
+
 function frame() {
   const now = performance.now();
   const dt = Math.min(0.1, (now - last) / 1000); // не больше 0.1 с, если вкладка «спала»
@@ -490,6 +506,7 @@ function frame() {
   const t = now / 1000; // секунды с открытия страницы
 
   for (const ch of characters) ch.update(dt);
+  flickerLamps(t);
   if (debug.visible && selected) debug.setPath([selected.position, ...selected.path]);
   cam.t += dt;
   const k = placeCamera(t);
@@ -517,6 +534,24 @@ if (import.meta.env.DEV) {
     renderer, pass, basePos, built, loadModel, renderPortrait, cam, openCloseUp, closeCloseUp, furniture, radio,
     get selected() {
       return selected;
+    },
+    // Выгрузить комнату (без персонажей) и лампы для запекания света:
+    // models-src/bake/scene.glb и lights.json, дальше — tools/blender/bake.py.
+    async exportForBake() {
+      const { GLTFExporter } = await import('three/addons/exporters/GLTFExporter.js');
+      built.group.updateMatrixWorld(true);
+      const glb = await new GLTFExporter().parseAsync(built.group, { binary: true, onlyVisible: false });
+      const lamps = built.lights.map((l) => ({
+        position: l.getWorldPosition(new THREE.Vector3()).toArray(),
+        color: `#${l.color.getHexString()}`,
+        intensity: l.userData.base ?? l.intensity, // без мерцания
+        distance: l.distance,
+      }));
+      const info = { room, lighting, lamps, furniture };
+      const post = (name, body) => fetch(`/__bake/${name}`, { method: 'POST', body });
+      await post('scene.glb', glb);
+      await post('lights.json', JSON.stringify(info, null, 2));
+      return { lamps: lamps.length, bytes: glb.byteLength };
     },
   };
 }

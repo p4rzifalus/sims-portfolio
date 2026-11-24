@@ -42,6 +42,46 @@ function cylinder(rTop, rBottom, h, mat, x = 0, y = 0, z = 0, segments = 8) {
   return m;
 }
 
+// Ореол вокруг лампы (этап 14): плоский светящийся круг, всегда смотрит в камеру,
+// складывается со светом под ним. Не ловит клики и не обводится.
+let haloTexture = null;
+function halo(color, size) {
+  if (!haloTexture) {
+    const c = document.createElement('canvas');
+    c.width = c.height = 64;
+    const ctx = c.getContext('2d');
+    const g = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+    g.addColorStop(0, 'rgba(255,255,255,0.9)');
+    g.addColorStop(0.25, 'rgba(255,255,255,0.35)');
+    g.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 64, 64);
+    haloTexture = new THREE.CanvasTexture(c);
+  }
+  const s = new THREE.Sprite(
+    new THREE.SpriteMaterial({ map: haloTexture, color, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }),
+  );
+  s.scale.set(size, size, 1);
+  s.userData.noSnap = true;
+  s.userData.noOutline = true;
+  s.raycast = () => {};
+  return s;
+}
+
+// Свет лампы с ореолом; ореол мерцает вместе со светом (main.js, lighting.flicker).
+function lampLight(lights, color, intensity, distance, decay, x, y, z, haloSize) {
+  const light = new THREE.PointLight(color, intensity, distance, decay);
+  light.position.set(x, y, z);
+  light.userData.base = intensity;
+  if (haloSize) {
+    const h = halo(color, haloSize);
+    h.position.set(x, y, z);
+    light.userData.halo = h;
+  }
+  lights.push(light);
+  return light;
+}
+
 // На что можно сесть: высота сиденья, насколько оно сдвинуто вперёд от центра клетки
 // и откуда к нему подходить (approach: минус — сзади, как к стулу у стола;
 // плюс — спереди, как к дивану у стены). Должно совпадать с размерами в builders ниже.
@@ -182,10 +222,10 @@ const builders = {
     g.add(cylinder(0.17, 0.19, 0.04, m.metal, o, 0, o));
     g.add(cylinder(0.02, 0.02, 1.38, m.metal, o, 0.04, o, 6));
     g.add(cylinder(0.12, 0.22, 0.3, m.shade, o, 1.36, o));
-    const light = new THREE.PointLight(item.lightColor || '#ffc477', item.lightIntensity ?? 2.2, item.lightDistance ?? 4.5, item.lightDecay ?? 1);
-    light.position.set(o, 1.4, o);
+    const light = lampLight(lights, item.lightColor || '#ffc477', item.lightIntensity ?? 2.2,
+      item.lightDistance ?? 4.5, item.lightDecay ?? 1, o, 1.4, o, item.halo);
     g.add(light);
-    lights.push(light);
+    if (light.userData.halo) g.add(light.userData.halo);
     return g;
   },
 
@@ -250,11 +290,10 @@ const builders = {
     g.add(head);
     if (item.lampLight) {
       // свет настольной лампы (этап 14): тёплое пятно на столе и на сидящем
-      const { color = '#ffb35c', intensity = 2, distance = 3, decay = 1.5 } = item.lampLight;
-      const light = new THREE.PointLight(color, intensity, distance, decay);
-      light.position.set(0.24, y + 0.26, zc - 0.14);
+      const { color = '#ffb35c', intensity = 2, distance = 3, decay = 1.5, halo: hs } = item.lampLight;
+      const light = lampLight(lights, color, intensity, distance, decay, 0.24, y + 0.26, zc - 0.14, hs);
       g.add(light);
-      lights.push(light);
+      if (light.userData.halo) g.add(light.userData.halo);
     }
     // кружка
     g.add(cylinder(0.035, 0.035, 0.08, m.mug, 0.05, y, zc + 0.12));
@@ -466,7 +505,12 @@ const builders = {
     const g = new THREE.Group();
     const W = 0.72, H = 0.9, y = item.height || 1.75;
     const map = item.image ? tex.imagePoster(`${import.meta.env.BASE_URL}${item.image}`) : tex.poster(item);
-    const paper = new THREE.Mesh(new THREE.PlaneGeometry(W, H), lambert({ map }));
+    // Плакат не зависит от ламп (как будто его подсвечивает своя лампа над рамой): в полумраке
+    // особняка он иначе почти не читается, а это анонс курса. Цвет — чуть тёплый и приглушённый.
+    const paper = new THREE.Mesh(
+      new THREE.PlaneGeometry(W, H),
+      item.selfLit ? new THREE.MeshBasicMaterial({ map, color: item.selfLit }) : lambert({ map }),
+    );
     paper.position.set(0, y, 0.025);
     paper.userData.noSnap = true;
     g.add(paper);
@@ -510,7 +554,8 @@ function loadFurnitureModel(obj, item) {
 }
 
 // ---------- Сборка комнаты ----------
-export function buildRoom(room, furniture) {
+// baked — запечённый свет из data.js (lighting.baked): карты света пола и двух высоких стен.
+export function buildRoom(room, furniture, baked = null) {
   const group = new THREE.Group();
   const lights = [];
   const objects = {}; // id предмета → его 3D-группа
@@ -559,9 +604,41 @@ export function buildRoom(room, furniture) {
     books: ['#9c3a32', '#2f5d8a', '#d1a63a', '#3d7a4a', '#6b4a8a', '#c9c2b0', '#2b2b30'].map((c) => lambert({ color: c })),
   };
 
+  // Запечённый свет (этап 14, tools/blender/bake.py): пол и стены не берут живые лампы,
+  // а показывают текстуру × карту света. Карта света сглажена (не пиксельная) — ступеньки
+  // ей добавляет палитра PS1. Копии карт с другим кадрированием обновляются после загрузки.
+  let lit = null;
+  if (baked && mansion) {
+    const parts = [];
+    const load = (name) =>
+      new THREE.TextureLoader().load(`${import.meta.env.BASE_URL}${baked.dir}${name}.png`, () => {
+        for (const p of parts) p.needsUpdate = true;
+      });
+    const maps = { floor: load('floor'), north: load('north'), west: load('west') };
+    for (const t of Object.values(maps)) t.colorSpace = THREE.SRGBColorSpace;
+    lit = {
+      maps,
+      // в MeshBasicMaterial карта света делится на π; в файлах значения поделены на exposure
+      intensity: (baked.brightness ?? 1) * (baked.exposure ?? 2) * Math.PI,
+      // часть карты стены по высоте y0…y1 (стена в файле — от −SLAB до H)
+      part(map, y0, y1) {
+        const t = map.clone();
+        t.repeat.set(1, (y1 - y0) / (H + SLAB));
+        t.offset.set(0, (y0 + SLAB) / (H + SLAB));
+        parts.push(t);
+        return t;
+      },
+      material(map, lightMap) {
+        return new THREE.MeshBasicMaterial({ map, lightMap, lightMapIntensity: this.intensity });
+      },
+    };
+    m.floor = lit.material(tex.repeated(t.planks, C, R), maps.floor);
+  }
+
   // Пол: плита толщиной SLAB, сверху доски (одна текстура на клетку).
   const floor = new THREE.Mesh(new THREE.BoxGeometry(C, SLAB, R), [m.slab, m.slab, m.floor, m.slab, m.slab, m.slab]);
   floor.position.set(C / 2, -SLAB / 2, R / 2);
+  floor.name = 'floor'; // по имени его находит запекание света (tools/blender/bake.py)
   floor.userData.isFloor = true;
   floor.userData.noSnap = true; // без дрожания, иначе перекрывает ковёр (см. ps1.js)
   group.add(floor);
@@ -573,13 +650,14 @@ export function buildRoom(room, furniture) {
     const mats = [m.cut, m.cut, m.cut, m.cut, m.cut, m.cut];
     mats[innerFace] = inner;
     const mesh = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, y1 - y0, z1 - z0), mats);
+    mesh.name = 'wall'; // по имени стены прячет запекание света (tools/blender/bake.py)
     mesh.position.set((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
     // Стены — огромные плоскости, как пол: без дрожания, иначе при прыжке вершин
     // их плоскость «наклоняется» и перекрывает то, что висит на них (окно, плакат).
     mesh.userData.noSnap = true;
     group.add(mesh);
   }
-  const papered = (len, h) => lambert({ map: tex.repeated(t.wallpaper, len * 2, h * 2) }); // плитка обоев — полклетки
+  const paper = (len, h) => tex.repeated(t.wallpaper, len * 2, h * 2); // плитка обоев — полклетки
   const walls = [
     // [x0, x1, z0, z1, высота, грань внутрь, длина вдоль стены]
     [-WALL_T, C, -WALL_T, 0, H, 4, C], // задняя (north), внутрь смотрит грань +Z
@@ -600,13 +678,16 @@ export function buildRoom(room, furniture) {
     // нарисована на высоту wainscot; то, что ниже пола, не видно.
     const WH = room.wainscot;
     const panels = tex.wainscot(colors.wainscot);
-    for (const [x0, x1, z0, z1, h, face, len] of walls) {
+    walls.forEach(([x0, x1, z0, z1, h, face, len], i) => {
+      // у задней и левой стены — запечённый свет, у низких передних — живой
+      const lm = lit && [lit.maps.north, lit.maps.west][i];
+      const mat = (map, y0, y1) => (lm ? lit.material(map, lit.part(lm, y0, y1)) : lambert({ map }));
       const low = Math.min(h, WH);
       const map = tex.repeated(panels, len, (low + SLAB) / WH);
       map.offset.y = 1 - ((((low + SLAB) / WH) % 1) || 1); // верх панели — по верху стены
-      wall(x0, x1, z0, z1, -SLAB, low, face, lambert({ map }));
-      if (h > WH) wall(x0, x1, z0, z1, WH, h, face, papered(len, h - WH));
-    }
+      wall(x0, x1, z0, z1, -SLAB, low, face, mat(map, -SLAB, low));
+      if (h > WH) wall(x0, x1, z0, z1, WH, h, face, mat(paper(len, h - WH), WH, h));
+    });
     const rail = lambert({ map: t.wood, color: '#5a4636' });
     const along = (y, hh, depth) => {
       // полоса по двум высоким стенам: задней и левой
