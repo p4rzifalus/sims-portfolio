@@ -157,14 +157,62 @@ button { font: inherit; letter-spacing: inherit; cursor: pointer; }
   text-shadow: 0 1px 2px #000;
   border-image: var(--ui-pill) var(--ui-pill-slice) fill / var(--ui-pill-w);
 }
-.pill:hover { border-image-source: var(--ui-pill-hover); color: #fff3dc; }
-.pill:active { border-image-source: var(--ui-pill-pressed); }
+/* Наведение и нажатие — та же картинка плашки, меняется только свет: картинки «наведение» и
+   «нажата» из gpt-image нарисованы заново и чуть другой формы, при подмене контур дёргался.
+   Наведение: светлее + тлеющий ореол по контуру (drop-shadow повторяет форму плашки) +
+   уголёк снизу на дереве (::after, смешивание screen). Нажатие: темнее, ореол меньше. */
+.pill,
+.round,
+.close {
+  transition: filter 0.12s ease-out;
+}
+.pill::after,
+.round::after,
+.close::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  mix-blend-mode: screen;
+  transition: opacity 0.12s ease-out;
+}
+.pill::after {
+  background: radial-gradient(28% 30% at 51% 74%, rgba(255, 140, 50, 0.75), rgba(255, 90, 20, 0.25) 55%, transparent);
+}
+.round::after,
+.close::after {
+  border-radius: 50%;
+  background: radial-gradient(45% 40% at 50% 78%, rgba(255, 140, 50, 0.6), rgba(255, 90, 20, 0.2) 60%, transparent);
+}
+.pill:hover:not(:disabled),
+.round:hover:not(:disabled),
+.close:hover:not(:disabled) {
+  color: #fff3dc;
+  filter: brightness(1.15) drop-shadow(0 0 5px rgba(255, 110, 30, 0.55));
+}
+.pill:hover:not(:disabled)::after,
+.round:hover:not(:disabled)::after,
+.close:hover:not(:disabled)::after {
+  opacity: 1;
+}
+.pill:active:not(:disabled),
+.round:active:not(:disabled),
+.close:active:not(:disabled) {
+  filter: brightness(0.85) drop-shadow(0 0 2px rgba(255, 110, 30, 0.4));
+}
+.pill:active:not(:disabled)::after,
+.round:active:not(:disabled)::after,
+.close:active:not(:disabled)::after {
+  opacity: 0.5;
+}
 .pill:disabled { border-image-source: var(--ui-pill-disabled); color: #8d8a86; cursor: default; }
 .pill.toggle { border-image-source: var(--ui-pill-off); color: #a8957a; }
 .pill.toggle.on { border-image-source: var(--ui-pill-on); color: #fff3dc; }
 
 .round,
 .close {
+  position: relative;
   border: 0;
   padding: 0;
   background: var(--ui-round) center / 100% 100% no-repeat;
@@ -173,13 +221,9 @@ button { font: inherit; letter-spacing: inherit; cursor: pointer; }
   display: grid;
   place-items: center;
 }
-.round:hover { background-image: var(--ui-round-hover); }
-.round:active { background-image: var(--ui-round-pressed); }
 .round:disabled { background-image: var(--ui-round-disabled); cursor: default; }
 .round:disabled .icon { filter: grayscale(1) brightness(0.7); }
 .close { width: 32px; height: 31.5px; background-image: var(--ui-close); }
-.close:hover { background-image: var(--ui-close-hover); }
-.close:active { background-image: var(--ui-close-pressed); }
 .close:disabled { background-image: var(--ui-close-disabled); cursor: default; }
 .icon { display: block; width: 18px; height: 18px; background: center / contain no-repeat; }
 .icon.play { background-image: var(--ui-icon-play); translate: 1px 0; }
