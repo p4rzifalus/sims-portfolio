@@ -38,14 +38,14 @@ export const room = {
 // Общий свет почти погашен: комнату освещают лампы (поля light* у торшера, lampLight у стола)
 // и холодный свет ночи из окна.
 export const lighting = {
-  ambient: { sky: '#6a5844', ground: '#1a120e', intensity: 1.2 }, // общий: сверху тёплый, снизу почти чёрный
+  ambient: { sky: '#6a5844', ground: '#1a120e', intensity: 1.6 }, // общий: сверху тёплый, снизу почти чёрный
   moon: { color: '#8a9ed8', intensity: 0.8, from: [4.5, 5, -3] }, // из окна на задней стене, в комнату
   // Запечённый свет на полу и стенах (tools/blender/bake.py → public/textures/bake/).
   // Убрать строку — пол и стены освещаются живыми лампами, как мебель.
   flicker: 0.06, // мерцание ламп и ореолов (0 — ровный свет)
   baked: {
     dir: 'textures/bake/',
-    brightness: 1, // ярче / темнее запечённого света на полу и стенах
+    brightness: 1.3, // ярче / темнее запечённого света на полу и стенах
     exposure: 2, // как сжаты значения в файлах (читает и bake.py; менять — только с перезапеканием)
   },
 };
@@ -142,7 +142,7 @@ export const characters = [
     forms: { nom: 'паша', gen: 'паши', dat: 'паше', acc: 'пашу', ins: 'пашей' },
     model: 'character-male-a',
     color: '#4aa3c7',
-    startCell: [5, 4],
+    startCell: [4, 4], // [5, 4] теперь занят столиком с лампой
     startFacing: 'south',
     needs: { hunger: 5, comfort: 7, energy: 6, fun: 8, social: 6, environment: 10 },
     interests: [
@@ -417,6 +417,19 @@ export const furniture = [
     blocks: false,
     facing: 'north',
     color: '#e8833a',
+  },
+
+  // --- передний правый угол: столик с лампой (этап 14) — свет в нижней части комнаты ---
+  {
+    id: 'side-lamp',
+    type: 'sideLamp',
+    cells: [[5, 4]],
+    blocks: true,
+    lightColor: '#ffbf70',
+    lightIntensity: 4,
+    lightDistance: 5,
+    lightDecay: 1.2,
+    halo: 0.6,
   },
 
   // --- у задней стены слева: торшер и книжный шкаф ---

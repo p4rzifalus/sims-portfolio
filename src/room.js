@@ -229,6 +229,24 @@ const builders = {
     return g;
   },
 
+  sideLamp(_, m, item, lights) {
+    // Круглый столик на одной ножке и настольная лампа с абажуром (этап 14).
+    // Невысокий (~1 ед.), чтобы в переднем углу не загораживать персонажей.
+    const g = new THREE.Group();
+    const o = 0.1; // ближе к углу клетки
+    g.add(cylinder(0.16, 0.18, 0.03, m.woodDark, o, 0, o, 8));
+    g.add(cylinder(0.035, 0.05, 0.52, m.woodDark, o, 0.03, o, 6));
+    g.add(cylinder(0.25, 0.25, 0.04, m.woodDark, o, 0.55, o, 10));
+    g.add(cylinder(0.06, 0.08, 0.05, m.gold, o, 0.59, o, 6));
+    g.add(cylinder(0.015, 0.015, 0.2, m.gold, o, 0.64, o, 6));
+    g.add(cylinder(0.09, 0.15, 0.17, m.shade, o, 0.8, o, 8));
+    const light = lampLight(lights, item.lightColor || '#ffc477', item.lightIntensity ?? 3,
+      item.lightDistance ?? 4, item.lightDecay ?? 1.2, o, 0.86, o, item.halo);
+    g.add(light);
+    if (light.userData.halo) g.add(light.userData.halo);
+    return g;
+  },
+
   rug({ w, d }, m) {
     const plane = new THREE.Mesh(new THREE.PlaneGeometry(w * 0.92, d * 0.88), m.rug);
     plane.rotation.x = -Math.PI / 2;
