@@ -28,7 +28,9 @@ export const room = {
     wallpaper: '#3d3a26', // фон обоев
     wallpaperPattern: '#6e6440', // узор на обоях
     wainscot: '#4a2e1c', // деревянные панели по низу стен
-    wood: '#6e4526', // дерево мебели
+    wood: '#6e4526', // дерево мебели (старой)
+    mahogany: '#7a4028', // красное дерево мебели особняка
+    leather: '#2f4a32', // кожа на столешнице
     wallTop: '#4a382c', // срез стен сверху
     chairSeat: '#7a3b3b', // сиденье стула
   },
@@ -346,7 +348,7 @@ export const furniture = [
   // --- рабочее место: длинный стол, два макбука, два стула ---
   {
     id: 'desk',
-    type: 'designDesk',
+    type: 'mansionDesk', // стол особняка; прежний белый — 'designDesk'
     cells: [[3, 0], [4, 0], [5, 0]], // ближе к центру — на телефоне влезает в кадр
     blocks: true,
     facing: 'south',
@@ -404,19 +406,19 @@ export const furniture = [
   },
   {
     id: 'chair-1',
-    type: 'designChair',
+    type: 'mansionChair', // стул особняка; прежний стул-чаша — 'designChair'
     cells: [[3, 1]],
     blocks: false, // на эту клетку персонаж встаёт, чтобы сесть
     facing: 'north',
-    color: '#efece6',
+    color: '#6a1f24', // обивка (бархат)
   },
   {
     id: 'chair-2',
-    type: 'designChair',
+    type: 'mansionChair',
     cells: [[5, 1]],
     blocks: false,
     facing: 'north',
-    color: '#e8833a',
+    color: '#6a1f24',
   },
 
   // --- передний правый угол: столик с лампой (этап 14) — свет в нижней части комнаты ---
@@ -446,7 +448,7 @@ export const furniture = [
   },
   {
     id: 'bookcase',
-    type: 'bookcase',
+    type: 'mansionBookcase', // тёмное дерево, книги в старых переплётах; прежний белый — 'bookcase'
     name: 'книжный шкаф',
     cells: [[1, 0], [2, 0]],
     blocks: true,
@@ -475,6 +477,7 @@ export const furniture = [
     blocks: true,
     facing: 'east',
     model: 'furniture/sofa.glb', // готовая модель; без этой строки — диван из коробок
+    tint: '#d86a70', // перекраска модели (особняк: бордовый бархат); без строки — как в файле
     color: '#5b6e9c', // цвет обивки (только у дивана из коробок)
     // Двое могут сесть рядом: персонаж займёт первое свободное место из spots.
     actions: [
@@ -513,7 +516,7 @@ export const furniture = [
   },
   {
     id: 'wardrobe',
-    type: 'wardrobe',
+    type: 'mansionWardrobe', // прежний светлый — 'wardrobe'
     cells: [[0, 4]], // одна клетка — одна дверь (две клетки — две двери); у дивана, в переднем углу
     blocks: true,
     facing: 'east',

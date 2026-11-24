@@ -88,6 +88,7 @@ function lampLight(lights, color, intensity, distance, decay, x, y, z, haloSize)
 const SEATS = {
   chair: { height: 0.49, forward: 0.12, approach: -0.45 },
   designChair: { height: 0.49, forward: 0.12, approach: -0.45 },
+  mansionChair: { height: 0.49, forward: 0.12, approach: -0.45 },
   // rigForward — насколько ещё вперёд садятся свои модели (у человека нормальных пропорций
   // ноги длиннее, чем у Kenney: на глубоком диване иначе голени уходят в его перед)
   sofa: { height: 0.46, forward: 0.055, approach: 0.55, rigForward: 0.15 },
@@ -226,6 +227,153 @@ const builders = {
       item.lightDistance ?? 4.5, item.lightDecay ?? 1, o, 1.4, o, item.halo);
     g.add(light);
     if (light.userData.halo) g.add(light.userData.halo);
+    return g;
+  },
+
+  // ---------- особняк (этап 14): мебель тёмного дерева ----------
+  // Простые формы, а филёнки, корешки книг и кожа нарисованы в текстурах — как на PS1.
+
+  mansionDesk({ w, d }, m, item, lights) {
+    // Письменный стол: столешница с зелёной кожей, царга, тумба с ящиками посередине
+    // (между двумя стульями), точёные ножки по краям. На столе — лампа с зелёным абажуром,
+    // стопка книг и кружка. Верх — на 0.79 (SURFACE_HEIGHT.desk), на нём стоят макбуки.
+    const g = new THREE.Group();
+    const depth = 0.72, top = 0.79, W = w - 0.1;
+    const zc = -d / 2 + depth / 2 + 0.04;
+    g.add(box(W, 0.05, depth, [m.mahogany, m.mahogany, m.leatherTop, m.mahogany, m.mahogany, m.mahogany], 0, top - 0.05, zc));
+    g.add(box(W + 0.04, 0.02, depth + 0.04, m.mahogany, 0, top - 0.07, zc)); // кромка
+    g.add(box(W - 0.1, 0.12, depth - 0.08, m.mahogany, 0, top - 0.19, zc)); // царга
+    // тумба с тремя ящиками
+    const pw = 0.5;
+    g.add(box(pw, top - 0.19, depth - 0.06, m.mahogany, 0, 0, zc));
+    for (let i = 0; i < 3; i++) {
+      const h = (top - 0.27) / 3;
+      g.add(box(pw - 0.06, h - 0.03, 0.02, m.mahoganyPanel, 0, 0.06 + i * h, zc + (depth - 0.06) / 2));
+      g.add(box(0.08, 0.02, 0.025, m.gold, 0, 0.06 + i * h + h / 2 - 0.02, zc + (depth - 0.06) / 2 + 0.015));
+    }
+    g.add(box(pw + 0.04, 0.06, depth - 0.02, m.mahogany, 0, 0, zc)); // цоколь
+    // точёные ножки
+    for (const sx of [-1, 1]) {
+      for (const sz of [-1, 1]) {
+        const x = sx * (W / 2 - 0.08), z = zc + sz * (depth / 2 - 0.07);
+        g.add(cylinder(0.035, 0.025, top - 0.19, m.mahogany, x, 0, z, 6));
+        g.add(cylinder(0.05, 0.05, 0.08, m.mahogany, x, top - 0.36, z, 6)); // утолщение
+        g.add(cylinder(0.03, 0.035, 0.04, m.gold, x, 0, z, 6)); // латунный башмачок
+      }
+    }
+    const y = top;
+    // лампа с зелёным абажуром («банкирская»)
+    const lx = 0.24, lz = zc - 0.14;
+    g.add(box(0.2, 0.025, 0.1, m.gold, lx, y, lz));
+    g.add(cylinder(0.012, 0.012, 0.28, m.gold, lx, y + 0.025, lz, 5));
+    const shade = cylinder(0.05, 0.05, 0.26, m.greenShade, 0, 0, 0, 8);
+    shade.rotation.z = Math.PI / 2;
+    shade.position.set(lx, y + 0.31, lz + 0.02);
+    g.add(shade);
+    if (item.lampLight) {
+      const { color = '#ffb35c', intensity = 2, distance = 3, decay = 1.5, halo: hs } = item.lampLight;
+      const light = lampLight(lights, color, intensity, distance, decay, lx, y + 0.24, lz + 0.05, hs);
+      g.add(light);
+      if (light.userData.halo) g.add(light.userData.halo);
+    }
+    // стопка книг и кружка
+    const stack = [[0.24, 0.05, '#5e2420'], [0.22, 0.04, '#2c3a2a'], [0.2, 0.045, '#3a3020']];
+    let sy = y;
+    stack.forEach(([bw, bh, c], i) => {
+      const b = box(bw, bh, 0.16, lambert({ color: c }), -0.2, sy, zc - 0.12);
+      b.rotation.y = (i - 1) * 0.15;
+      g.add(b);
+      sy += bh;
+    });
+    g.add(cylinder(0.035, 0.035, 0.08, m.mug, 0.05, y, zc + 0.14));
+    return g;
+  },
+
+  mansionChair(_, m, item) {
+    // Стул тёмного дерева: мягкое сиденье, высокая спинка с обивкой, передние ножки точёные.
+    // Сиденье — на той же высоте, что у designChair (SEATS), чтобы персонаж садился ровно.
+    const g = new THREE.Group();
+    const z = 0.12;
+    const seat = item.color ? lambert({ map: tex.velvet(item.color) }) : m.velvetSeat;
+    for (const sx of [-1, 1]) {
+      g.add(cylinder(0.025, 0.02, 0.43, m.mahogany, sx * 0.19, 0, z + 0.17, 6)); // передние
+      g.add(box(0.045, 0.43, 0.045, m.mahogany, sx * 0.19, 0, z - 0.18)); // задние
+    }
+    g.add(box(0.46, 0.05, 0.44, m.mahogany, 0, 0.41, z)); // рама сиденья
+    g.add(box(0.42, 0.04, 0.4, seat, 0, 0.45, z)); // подушка (верх — 0.49)
+    // спинка: две стойки, перекладина сверху, обивка между ними
+    const back = new THREE.Group();
+    back.position.set(0, 0.46, z - 0.2);
+    back.rotation.x = -0.1;
+    for (const sx of [-1, 1]) back.add(box(0.045, 0.62, 0.045, m.mahogany, sx * 0.2, 0, 0));
+    back.add(box(0.48, 0.07, 0.05, m.mahogany, 0, 0.6, 0));
+    back.add(box(0.36, 0.4, 0.03, seat, 0, 0.16, 0.01));
+    g.add(back);
+    return g;
+  },
+
+  mansionBookcase({ w, d }, m) {
+    // Книжный шкаф тёмного дерева: цоколь, две секции, карниз. Книги — текстура корешков
+    // на брусках (как на PS1), кое-где ваза или шкатулка.
+    const g = new THREE.Group();
+    const W = w - 0.15, D = 0.38, H = 2.1;
+    const zc = -d / 2 + D / 2 + 0.02;
+    g.add(box(W + 0.04, 0.1, D + 0.02, m.mahogany, 0, 0, zc)); // цоколь
+    for (const x of [-W / 2 + 0.025, 0, W / 2 - 0.025]) g.add(box(0.05, H - 0.1, D, m.mahogany, x, 0.1, zc));
+    g.add(box(W - 0.06, H - 0.1, 0.02, m.mahoganyDark, 0, 0.1, zc - D / 2 + 0.01));
+    g.add(box(W + 0.1, 0.08, D + 0.08, m.mahogany, 0, H, zc)); // карниз
+    g.add(box(W + 0.04, 0.04, D + 0.04, m.mahogany, 0, H - 0.04, zc));
+    const shelves = [0.1, 0.52, 0.94, 1.36, 1.78, H];
+    const rnd = tex.random(12);
+    shelves.forEach((y, i) => {
+      g.add(box(W - 0.04, 0.035, D - 0.02, m.mahogany, 0, y - 0.035, zc));
+      if (i === shelves.length - 1) return;
+      for (const side of [-1, 1]) {
+        const x0 = side < 0 ? -W / 2 + 0.05 : 0.025;
+        const x1 = side < 0 ? -0.025 : W / 2 - 0.05;
+        let bx0 = x0, bx1 = x1;
+        const deco = rnd();
+        if (deco < 0.25) {
+          // ваза или шкатулка с краю
+          const cx = side < 0 ? x0 + 0.07 : x1 - 0.07;
+          if (deco < 0.12) g.add(cylinder(0.035, 0.05, 0.16, m.gold, cx, y, zc + 0.02, 6));
+          else g.add(box(0.11, 0.07, 0.09, m.mahoganyPanel, cx, y, zc + 0.02));
+          if (side < 0) bx0 += 0.15;
+          else bx1 -= 0.15;
+        }
+        const books = m.bookRows[Math.floor(rnd() * m.bookRows.length)];
+        const bh = 0.3 + rnd() * 0.04;
+        const row = box(bx1 - bx0, bh, D * 0.72, [m.mahoganyDark, m.mahoganyDark, m.mahoganyDark, m.mahoganyDark, books, m.mahoganyDark], (bx0 + bx1) / 2, y, zc + 0.02);
+        g.add(row);
+      }
+    });
+    return g;
+  },
+
+  mansionWardrobe({ w, d }, m) {
+    // Шкаф для одежды: цоколь на ножках-«шарах», дверь с двумя филёнками, латунная ручка,
+    // карниз с фронтоном. На две клетки — две двери.
+    const g = new THREE.Group();
+    const W = w - 0.12, D = 0.6, H = 2.15;
+    const zc = -d / 2 + D / 2 + 0.03;
+    for (const sx of [-1, 1]) {
+      for (const sz of [-1, 1]) g.add(cylinder(0.05, 0.035, 0.08, m.mahogany, sx * (W / 2 - 0.07), 0, zc + sz * (D / 2 - 0.07), 6));
+    }
+    g.add(box(W + 0.02, 0.1, D + 0.02, m.mahogany, 0, 0.08, zc)); // цоколь
+    g.add(box(W, H - 0.28, D, m.mahogany, 0, 0.18, zc));
+    g.add(box(W + 0.1, 0.06, D + 0.08, m.mahogany, 0, H - 0.1, zc)); // карниз
+    g.add(box(W + 0.04, 0.04, D + 0.04, m.mahogany, 0, H - 0.14, zc));
+    // ступенчатое навершие над карнизом
+    g.add(box(W * 0.6, 0.07, D * 0.5, m.mahogany, 0, H - 0.04, zc + D * 0.22));
+    g.add(box(W * 0.3, 0.05, D * 0.4, m.mahogany, 0, H + 0.03, zc + D * 0.24));
+    const doors = w < 1.5 ? [0] : [-1, 1];
+    const dw = doors.length === 1 ? W - 0.08 : W / 2 - 0.05;
+    for (const sx of doors) {
+      const x = sx * (dw / 2 + 0.01);
+      g.add(box(dw, H - 0.4, 0.025, m.wardrobeDoor, x, 0.24, zc + D / 2));
+      const hx = doors.length === 1 ? W / 2 - 0.1 : sx * 0.07;
+      g.add(box(0.025, 0.12, 0.03, m.gold, hx, 1.05, zc + D / 2 + 0.025));
+    }
     return g;
   },
 
@@ -562,7 +710,7 @@ function loadFurnitureModel(obj, item) {
           map.minFilter = THREE.NearestFilter;
           map.generateMipmaps = false;
         }
-        o.material = lambert({ map }); // тот же свет, что у остальной комнаты
+        o.material = lambert({ map, color: item.tint || '#ffffff' }); // тот же свет, что у остальной комнаты; tint — перекраска
       });
       applyPS1(gltf.scene);
       obj.clear();
@@ -604,6 +752,15 @@ export function buildRoom(room, furniture, baked = null) {
     deskTop: lambert({ color: '#eeebe4' }),
     metalBlack: lambert({ color: '#26252b' }),
     windowFrame: lambert({ map: t.wood, color: '#6a5446' }),
+    // особняк (этап 14): красное дерево, филёнки, кожа, корешки книг
+    mahogany: lambert({ map: tex.wood(colors.mahogany || '#5a2e1a') }),
+    mahoganyDark: lambert({ map: tex.wood(colors.mahogany || '#5a2e1a'), color: '#6a6a6a' }),
+    mahoganyPanel: lambert({ map: tex.wainscot(colors.mahogany || '#5a2e1a') }),
+    wardrobeDoor: lambert({ map: tex.repeated(tex.wainscot(colors.mahogany || '#5a2e1a'), 1, 2) }), // две филёнки
+    leatherTop: lambert({ map: tex.leather(colors.leather || '#2f4a32') }),
+    bookRows: [1, 2, 3, 4, 5].map((seed) => lambert({ map: tex.bookSpines(seed) })),
+    greenShade: lambert({ color: '#2f6a3c', emissive: '#3c8a4a', emissiveIntensity: 0.6 }),
+    velvetSeat: lambert({ map: tex.velvet('#6a1f24') }),
     gold: lambert({ color: '#b08a3e' }),
     silver: lambert({ color: '#c6cad1' }),
     silverDark: lambert({ color: '#a9adb5' }),

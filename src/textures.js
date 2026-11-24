@@ -467,3 +467,39 @@ export function velvet(hex) {
     return shade(base, k);
   }, 65);
 }
+
+// Ряд книг на полке (этап 14): корешки разной ширины и высоты в старых переплётах,
+// золотые полоски, над книгами — тёмная щель. Одна текстура на полку вместо сотни брусков.
+export function bookSpines(seed = 1) {
+  const covers = [[96, 34, 30], [40, 62, 44], [34, 42, 74], [92, 64, 36], [36, 30, 30], [120, 92, 60], [70, 40, 56]];
+  const rnd0 = random(seed * 97 + 3);
+  const books = [];
+  for (let x = 0; x < 64; ) {
+    const w = 2 + Math.floor(rnd0() * 4);
+    books.push({ x0: x, x1: x + w, top: Math.floor(rnd0() * 14), c: covers[Math.floor(rnd0() * covers.length)], gap: rnd0() < 0.08, band: 4 + Math.floor(rnd0() * 6) });
+    x += w;
+  }
+  return makeTexture((x, y, rnd) => {
+    const b = books.find((bb) => x >= bb.x0 && x < bb.x1) || books[books.length - 1];
+    if (b.gap || y < b.top) return [16, 11, 9]; // щель над книгами
+    let k = 0.9 + rnd() * 0.15;
+    if (x === b.x0) k *= 0.55; // стык корешков
+    if (x === b.x1 - 1) k *= 0.8;
+    const fromTop = y - b.top;
+    if (fromTop === b.band || fromTop === b.band + 2 || y === 58) return [176, 140, 70].map((v) => v * k); // золотое тиснение
+    if (y > 61) k *= 0.6; // тень у полки
+    return b.c.map((v) => v * k * 1.6);
+  }, seed, 64, 64);
+}
+
+// Кожаная вставка столешницы: зелёная кожа с золотой рамкой тиснения.
+export function leather(hex = '#2f4a32') {
+  const base = hexToRgb(hex);
+  return makeTexture((x, y, rnd) => {
+    const e = Math.min(x, y, 63 - x, 31 - y);
+    if (e === 2) return [168, 132, 66];
+    let k = 0.88 + rnd() * 0.2;
+    if (e < 2) k *= 0.6;
+    return shade(base, k);
+  }, 66, 64, 32);
+}
