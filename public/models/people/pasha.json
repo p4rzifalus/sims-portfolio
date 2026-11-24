@@ -1,0 +1,21 @@
+{
+  "height": 1.5,
+  "walkSpeed": 1.324,
+  "sitSeat": 0.27,
+  "sitHipsY": 0.007,
+  "sitDownTime": 2.233,
+  "standUpTime": 2.267,
+  "waveTime": 4.733,
+  "animations": {
+    "idle": true,
+    "walk": true,
+    "sitDown": false,
+    "sit": true,
+    "standUp": false,
+    "type": true,
+    "wave": false,
+    "talk": true,
+    "dance": true,
+    "reach": false
+  }
+}
