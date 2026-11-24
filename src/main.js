@@ -297,6 +297,25 @@ setPS1(ps1On);
 // Радио в правом верхнем углу.
 const corner = document.getElementById('corner');
 const radio = createRadio(corner, radioData, () => completeTask('p1', 'radio'));
+const helpButton = document.createElement('button');
+helpButton.className = 'pill small help-toggle';
+helpButton.type = 'button';
+helpButton.textContent = '?';
+helpButton.setAttribute('aria-label', 'подсветить интерактивные элементы');
+helpButton.setAttribute('aria-pressed', 'false');
+corner.appendChild(helpButton);
+let showHints = false;
+helpButton.addEventListener('click', () => {
+  showHints = !showHints;
+  helpButton.setAttribute('aria-pressed', String(showHints));
+  helpButton.classList.toggle('active', showHints);
+  document.body.classList.toggle('show-hints', showHints);
+  for (const item of Object.values(built.objects)) {
+    if (item.userData.interactive) setOutlined(item, showHints);
+  }
+  for (const ch of characters) setOutlined(ch.model, showHints);
+  if (hovered) setOutlined(hovered, showHints || mouse.inside);
+});
 // Письмо и баннер встают под угол с кнопками — его высота меняется, когда радио раскрывается.
 function updateCornerBottom() {
   document.documentElement.style.setProperty('--corner-bottom', `${Math.round(corner.getBoundingClientRect().bottom)}px`);
@@ -382,6 +401,7 @@ Promise.all(characterData.map((data) => loadModel(data.model)))
       const ch = new Character(data, models[i], grid, animations);
       characters.push(ch);
       scene.add(ch.root);
+      if (showHints) setOutlined(ch.model, true);
       portraits[data.id] = renderPortrait(renderer, models[i]);
       hud.setPortrait(data.id, portraits[data.id]);
     });
@@ -430,7 +450,7 @@ function updateHover() {
   const target = mouse.inside && !busyCamera ? pick(mouse.x, mouse.y) : null;
   const obj = target && target.type !== 'floor' ? target.object : null;
   if (obj === hovered) return;
-  if (hovered) setOutlined(hovered, false);
+  if (hovered && !showHints) setOutlined(hovered, false);
   if (obj) setOutlined(obj, true);
   hovered = obj;
   canvas.style.cursor = obj ? 'pointer' : 'default';
@@ -592,7 +612,7 @@ function frame() {
   if (selected) hud.setActivity(selected.activity || (selected.isWalking ? { icon: '🚶', label: ui.walking } : null));
 
   const hoveredIsCharacter = Boolean(hovered?.userData.characterId);
-  pass.render(renderer, scene, camera, Boolean(hovered), hoveredIsCharacter ? ps1.characterSnap : 1);
+  pass.render(renderer, scene, camera, !cam.closeUp && (showHints || Boolean(hovered)), hoveredIsCharacter ? ps1.characterSnap : 1);
 
   debug.updateLabels(toScreen);
   requestAnimationFrame(frame);

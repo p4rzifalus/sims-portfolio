@@ -1694,3 +1694,12 @@ body.closeup #ui .closeup-bar {
 .task { display: flex; gap: 8px; align-items: baseline; }
 .task-check { flex: none; color: #d8c39f; }
 .task.done .task-check { color: #a7d177; }
+
+/* Подсказка показывает элементы, с которыми можно взаимодействовать. */
+body.show-hints #ui button:not(:disabled),
+body.show-hints #ui a[href],
+body.show-hints #corner .radio button:not(:disabled),
+body.show-hints #corner .radio a[href],
+body.show-hints #corner .radio input {
+  filter: drop-shadow(0 0 5px #ffc36a) drop-shadow(0 0 3px #ff9f35);
+}
