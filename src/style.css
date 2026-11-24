@@ -255,7 +255,9 @@ textarea {
   box-sizing: border-box;
   height: calc(43px * var(--k));
   min-width: calc(110px * var(--k));
-  padding: 0 2px calc(4px * var(--k)) calc(2px + 2px * var(--k));
+  /* текст вверх на 0,75 px × k (середина дерева выше центра картинки) + 0,12 em (строчные
+     буквы ниже середины строки) — снизу отступ вдвое больше; вправо на 1 px × k */
+  padding: 0 2px calc(1.5px * var(--k) + 0.24em) calc(2px + 2px * var(--k));
   border-style: solid;
   border-width: calc(var(--k) * var(--ui-pill-wt)) calc(var(--k) * var(--ui-pill-wr))
     calc(var(--k) * var(--ui-pill-wb)) calc(var(--k) * var(--ui-pill-wl));
@@ -392,7 +394,7 @@ textarea {
   gap: 8px;
   width: auto;
   height: calc(43px * var(--k));
-  padding: 0 2px calc(4px * var(--k)) calc(2px + 2px * var(--k));
+  padding: 0 2px calc(1.5px * var(--k) + 0.24em) calc(2px + 2px * var(--k));
   box-sizing: border-box;
   border-radius: 0;
   border-style: solid;
@@ -424,6 +426,10 @@ textarea {
 .radio-icon.play {
   background-image: var(--ui-icon-play);
   translate: 1px 0;
+}
+/* в «таблетке» текст поднят ради строчных букв (0,12 em) — картинке-значку это не нужно */
+.radio.idle .radio-icon.play {
+  translate: 1px 0.12em;
 }
 .radio-icon.pause {
   background-image: var(--ui-icon-pause);
@@ -1114,7 +1120,9 @@ textarea {
     min-width: 0;
     flex: 1 1 auto;
     height: calc(48px * var(--k));
-    padding: 0 4px 2px;
+    /* у антиквы Old Standard TT высокий верхний запас строки — буквы сидят низко;
+       снизу отступ больше, чтобы строчные встали по середине бархата (замерено) */
+    padding: 2px 4px 0; /* бархатная середина на ~1 px ниже центра картинки (замерено) */
     box-sizing: border-box;
     font: 700 15px/1 'Old Standard TT', serif;
     white-space: nowrap;
@@ -1122,10 +1130,13 @@ textarea {
     color: var(--g-ink-dim);
     text-shadow: 0 1px 2px #000;
     background: none;
+    /* верхний и нижний края только рисуются (border-image-width), места не занимают —
+       иначе на текст остаётся полоса в несколько пикселей и его не выровнять */
     border-style: solid;
-    border-width: calc(var(--k) * var(--ui-tab-wt)) calc(var(--k) * var(--ui-tab-wr))
-      calc(var(--k) * var(--ui-tab-wb)) calc(var(--k) * var(--ui-tab-wl));
+    border-width: 0 calc(var(--k) * var(--ui-tab-wr)) 0 calc(var(--k) * var(--ui-tab-wl));
     border-image: var(--ui-tab) var(--ui-tab-slice) fill;
+    border-image-width: calc(var(--k) * var(--ui-tab-wt)) calc(var(--k) * var(--ui-tab-wr))
+      calc(var(--k) * var(--ui-tab-wb)) calc(var(--k) * var(--ui-tab-wl));
     cursor: pointer;
   }
   .hud-mtabs button.active {
@@ -1239,10 +1250,14 @@ textarea {
   animation: radial-pop 0.2s ease-out both;
 }
 .radial-pill {
-  --k: 0.75;
+  --k: 0.95; /* выше остальных «таблеток»: по ним целятся мышью и пальцем */
   position: absolute;
   font-size: 14px;
   animation: radial-pop 0.2s ease-out both;
+}
+/* значок-эмодзи: текст в «таблетке» поднят ради строчных букв (0,12 em), значку это не нужно */
+.radial-icon {
+  translate: 0 0.12em;
 }
 .radial-busy {
   font-size: 10.5px;
@@ -1258,7 +1273,7 @@ textarea {
   height: 57px;
 }
 .radial.compact .radial-pill {
-  --k: 0.66;
+  --k: 0.82;
   font-size: 12.5px;
   gap: 4px;
 }
