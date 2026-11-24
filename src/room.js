@@ -2,6 +2,7 @@
 // по описанию из data.js: где стоит предмет, сколько клеток занимает, куда смотрит.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import * as tex from './textures.js';
 import { applyPS1 } from './ps1.js';
 
@@ -42,12 +43,100 @@ function cylinder(rTop, rBottom, h, mat, x = 0, y = 0, z = 0, segments = 8) {
   return m;
 }
 
+// Ореол вокруг лампы (этап 14): плоский светящийся круг, всегда смотрит в камеру,
+// складывается со светом под ним. Не ловит клики и не обводится.
+let haloTexture = null;
+function halo(color, size) {
+  if (!haloTexture) {
+    const c = document.createElement('canvas');
+    c.width = c.height = 64;
+    const ctx = c.getContext('2d');
+    const g = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+    g.addColorStop(0, 'rgba(255,255,255,0.9)');
+    g.addColorStop(0.25, 'rgba(255,255,255,0.35)');
+    g.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 64, 64);
+    haloTexture = new THREE.CanvasTexture(c);
+  }
+  const s = new THREE.Sprite(
+    new THREE.SpriteMaterial({ map: haloTexture, color, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }),
+  );
+  s.scale.set(size, size, 1);
+  s.userData.noSnap = true;
+  s.userData.noOutline = true;
+  s.raycast = () => {};
+  return s;
+}
+
+// Золочёная рама картины (этап 14): широкий багет и тёмный кант внутри; под рамой тёмная
+// подложка без дрожания — рама дрожит, а картина нет, в щели видна подложка, а не обои.
+function goldFrame(m, W, H, y, f) {
+  const g = new THREE.Group();
+  const backing = new THREE.Mesh(new THREE.PlaneGeometry(W + f * 2, H + f * 2), lambert({ color: '#1e1610' }));
+  backing.position.set(0, y, 0.02);
+  backing.userData.noSnap = true;
+  g.add(backing);
+  g.add(box(W + f * 2, f, 0.05, m.gold, 0, y + H / 2, 0.025));
+  g.add(box(W + f * 2, f, 0.05, m.gold, 0, y - H / 2 - f, 0.025));
+  g.add(box(f, H, 0.05, m.gold, -W / 2 - f / 2, y - H / 2, 0.025));
+  g.add(box(f, H, 0.05, m.gold, W / 2 + f / 2, y - H / 2, 0.025));
+  const lip = 0.012; // тёмный кант по внутреннему краю
+  g.add(box(W, lip, 0.035, m.goldDark, 0, y + H / 2 - lip, 0.03));
+  g.add(box(W, lip, 0.035, m.goldDark, 0, y - H / 2, 0.03));
+  g.add(box(lip, H, 0.035, m.goldDark, -W / 2 + lip / 2, y - H / 2, 0.03));
+  g.add(box(lip, H, 0.035, m.goldDark, W / 2 - lip / 2, y - H / 2, 0.03));
+  return g;
+}
+
+// Текстура луча: по длине — от яркого у окна к нулю у пола, по ширине — мягкие края
+// и тёмная полоса посередине (тень переплёта).
+let shaftTex = null;
+function shaftTexture() {
+  if (shaftTex) return shaftTex;
+  const c = document.createElement('canvas');
+  c.width = 32;
+  c.height = 64;
+  const ctx = c.getContext('2d');
+  const img = ctx.createImageData(32, 64);
+  for (let y = 0; y < 64; y++) {
+    for (let x = 0; x < 32; x++) {
+      const along = y / 63; // верх картинки (y = 0, uv.v = 1) — у окна, низ — у пола
+      const across = Math.abs(x - 15.5) / 15.5;
+      let a = Math.pow(1 - along, 1.4) * (1 - Math.pow(across, 4));
+      if (Math.abs(x - 15.5) < 1.5) a *= 0.35;
+      const v = Math.round(255 * Math.max(0, a));
+      const i = (y * 32 + x) * 4;
+      img.data[i] = img.data[i + 1] = img.data[i + 2] = v;
+      img.data[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  shaftTex = new THREE.CanvasTexture(c);
+  return shaftTex;
+}
+
+// Свет лампы с ореолом; ореол мерцает вместе со светом (main.js, lighting.flicker).
+function lampLight(lights, color, intensity, distance, decay, x, y, z, haloSize) {
+  const light = new THREE.PointLight(color, intensity, distance, decay);
+  light.position.set(x, y, z);
+  light.userData.base = intensity;
+  if (haloSize) {
+    const h = halo(color, haloSize);
+    h.position.set(x, y, z);
+    light.userData.halo = h;
+  }
+  lights.push(light);
+  return light;
+}
+
 // На что можно сесть: высота сиденья, насколько оно сдвинуто вперёд от центра клетки
 // и откуда к нему подходить (approach: минус — сзади, как к стулу у стола;
 // плюс — спереди, как к дивану у стены). Должно совпадать с размерами в builders ниже.
 const SEATS = {
   chair: { height: 0.49, forward: 0.12, approach: -0.45 },
   designChair: { height: 0.49, forward: 0.12, approach: -0.45 },
+  mansionChair: { height: 0.49, forward: 0.12, approach: -0.45 },
   // rigForward — насколько ещё вперёд садятся свои модели (у человека нормальных пропорций
   // ноги длиннее, чем у Kenney: на глубоком диване иначе голени уходят в его перед)
   sofa: { height: 0.46, forward: 0.055, approach: 0.55, rigForward: 0.15 },
@@ -182,10 +271,250 @@ const builders = {
     g.add(cylinder(0.17, 0.19, 0.04, m.metal, o, 0, o));
     g.add(cylinder(0.02, 0.02, 1.38, m.metal, o, 0.04, o, 6));
     g.add(cylinder(0.12, 0.22, 0.3, m.shade, o, 1.36, o));
-    const light = new THREE.PointLight(item.lightColor || '#ffc477', 2.2, 4.5, 1);
-    light.position.set(o, 1.4, o);
+    const light = lampLight(lights, item.lightColor || '#ffc477', item.lightIntensity ?? 2.2,
+      item.lightDistance ?? 4.5, item.lightDecay ?? 1, o, 1.4, o, item.halo);
     g.add(light);
-    lights.push(light);
+    if (light.userData.halo) g.add(light.userData.halo);
+    return g;
+  },
+
+  // ---------- особняк (этап 14): мебель тёмного дерева ----------
+  // Простые формы, а филёнки, корешки книг и кожа нарисованы в текстурах — как на PS1.
+
+  mansionDesk({ w, d }, m, item, lights) {
+    // Письменный стол: столешница с зелёной кожей, царга, тумба с ящиками посередине
+    // (между двумя стульями), точёные ножки по краям. На столе — лампа с зелёным абажуром,
+    // стопка книг и кружка. Верх — на 0.79 (SURFACE_HEIGHT.desk), на нём стоят макбуки.
+    const g = new THREE.Group();
+    const depth = 0.72, top = 0.79, W = w - 0.1;
+    const zc = -d / 2 + depth / 2 + 0.04;
+    g.add(box(W, 0.05, depth, [m.mahogany, m.mahogany, m.leatherTop, m.mahogany, m.mahogany, m.mahogany], 0, top - 0.05, zc));
+    g.add(box(W + 0.04, 0.02, depth + 0.04, m.mahogany, 0, top - 0.07, zc)); // кромка
+    g.add(box(W - 0.1, 0.12, depth - 0.08, m.mahogany, 0, top - 0.19, zc)); // царга
+    // тумба с тремя ящиками
+    const pw = 0.5;
+    g.add(box(pw, top - 0.19, depth - 0.06, m.mahogany, 0, 0, zc));
+    for (let i = 0; i < 3; i++) {
+      const h = (top - 0.27) / 3;
+      g.add(box(pw - 0.06, h - 0.03, 0.02, m.mahoganyPanel, 0, 0.06 + i * h, zc + (depth - 0.06) / 2));
+      g.add(box(0.08, 0.02, 0.025, m.gold, 0, 0.06 + i * h + h / 2 - 0.02, zc + (depth - 0.06) / 2 + 0.015));
+    }
+    g.add(box(pw + 0.04, 0.06, depth - 0.02, m.mahogany, 0, 0, zc)); // цоколь
+    // точёные ножки
+    for (const sx of [-1, 1]) {
+      for (const sz of [-1, 1]) {
+        const x = sx * (W / 2 - 0.08), z = zc + sz * (depth / 2 - 0.07);
+        g.add(cylinder(0.035, 0.025, top - 0.19, m.mahogany, x, 0, z, 6));
+        g.add(cylinder(0.05, 0.05, 0.08, m.mahogany, x, top - 0.36, z, 6)); // утолщение
+        g.add(cylinder(0.03, 0.035, 0.04, m.gold, x, 0, z, 6)); // латунный башмачок
+      }
+    }
+    const y = top;
+    // лампа с зелёным абажуром («банкирская»)
+    const lx = 0.24, lz = zc - 0.14;
+    g.add(box(0.2, 0.025, 0.1, m.gold, lx, y, lz));
+    g.add(cylinder(0.012, 0.012, 0.28, m.gold, lx, y + 0.025, lz, 5));
+    const shade = cylinder(0.05, 0.05, 0.26, m.greenShade, 0, 0, 0, 8);
+    shade.rotation.z = Math.PI / 2;
+    shade.position.set(lx, y + 0.31, lz + 0.02);
+    g.add(shade);
+    if (item.lampLight) {
+      const { color = '#ffb35c', intensity = 2, distance = 3, decay = 1.5, halo: hs } = item.lampLight;
+      const light = lampLight(lights, color, intensity, distance, decay, lx, y + 0.24, lz + 0.05, hs);
+      g.add(light);
+      if (light.userData.halo) g.add(light.userData.halo);
+    }
+    // стопка книг и кружка
+    const stack = [[0.24, 0.05, '#5e2420'], [0.22, 0.04, '#2c3a2a'], [0.2, 0.045, '#3a3020']];
+    let sy = y;
+    stack.forEach(([bw, bh, c], i) => {
+      const b = box(bw, bh, 0.16, lambert({ color: c }), -0.2, sy, zc - 0.12);
+      b.rotation.y = (i - 1) * 0.15;
+      g.add(b);
+      sy += bh;
+    });
+    g.add(cylinder(0.035, 0.035, 0.08, m.mug, 0.05, y, zc + 0.14));
+    return g;
+  },
+
+  mansionChair(_, m, item) {
+    // Стул тёмного дерева: мягкое сиденье, высокая спинка с обивкой, передние ножки точёные.
+    // Сиденье — на той же высоте, что у designChair (SEATS), чтобы персонаж садился ровно.
+    const g = new THREE.Group();
+    const z = 0.12;
+    const seat = item.color ? lambert({ map: tex.velvet(item.color) }) : m.velvetSeat;
+    for (const sx of [-1, 1]) {
+      g.add(cylinder(0.025, 0.02, 0.43, m.mahogany, sx * 0.19, 0, z + 0.17, 6)); // передние
+      g.add(box(0.045, 0.43, 0.045, m.mahogany, sx * 0.19, 0, z - 0.18)); // задние
+    }
+    g.add(box(0.46, 0.05, 0.44, m.mahogany, 0, 0.41, z)); // рама сиденья
+    g.add(box(0.42, 0.04, 0.4, seat, 0, 0.45, z)); // подушка (верх — 0.49)
+    // спинка: две стойки, перекладина сверху, обивка между ними
+    const back = new THREE.Group();
+    back.position.set(0, 0.46, z - 0.2);
+    back.rotation.x = -0.1;
+    for (const sx of [-1, 1]) back.add(box(0.045, 0.62, 0.045, m.mahogany, sx * 0.2, 0, 0));
+    back.add(box(0.48, 0.07, 0.05, m.mahogany, 0, 0.6, 0));
+    back.add(box(0.36, 0.4, 0.03, seat, 0, 0.16, 0.01));
+    g.add(back);
+    return g;
+  },
+
+  mansionBookcase({ w, d }, m) {
+    // Книжный шкаф тёмного дерева: цоколь, две секции, карниз. Книги — текстура корешков
+    // на брусках (как на PS1), кое-где ваза или шкатулка.
+    const g = new THREE.Group();
+    const W = w - 0.15, D = 0.38, H = 2.1;
+    const zc = -d / 2 + D / 2 + 0.02;
+    g.add(box(W + 0.04, 0.1, D + 0.02, m.mahogany, 0, 0, zc)); // цоколь
+    for (const x of [-W / 2 + 0.025, 0, W / 2 - 0.025]) g.add(box(0.05, H - 0.1, D, m.mahogany, x, 0.1, zc));
+    g.add(box(W - 0.06, H - 0.1, 0.02, m.mahoganyDark, 0, 0.1, zc - D / 2 + 0.01));
+    g.add(box(W + 0.1, 0.08, D + 0.08, m.mahogany, 0, H, zc)); // карниз
+    g.add(box(W + 0.04, 0.04, D + 0.04, m.mahogany, 0, H - 0.04, zc));
+    const shelves = [0.1, 0.52, 0.94, 1.36, 1.78, H];
+    const rnd = tex.random(12);
+    shelves.forEach((y, i) => {
+      g.add(box(W - 0.04, 0.035, D - 0.02, m.mahogany, 0, y - 0.035, zc));
+      if (i === shelves.length - 1) return;
+      for (const side of [-1, 1]) {
+        const x0 = side < 0 ? -W / 2 + 0.05 : 0.025;
+        const x1 = side < 0 ? -0.025 : W / 2 - 0.05;
+        let bx0 = x0, bx1 = x1;
+        const deco = rnd();
+        if (deco < 0.25) {
+          // ваза или шкатулка с краю
+          const cx = side < 0 ? x0 + 0.07 : x1 - 0.07;
+          if (deco < 0.12) g.add(cylinder(0.035, 0.05, 0.16, m.gold, cx, y, zc + 0.02, 6));
+          else g.add(box(0.11, 0.07, 0.09, m.mahoganyPanel, cx, y, zc + 0.02));
+          if (side < 0) bx0 += 0.15;
+          else bx1 -= 0.15;
+        }
+        const books = m.bookRows[Math.floor(rnd() * m.bookRows.length)];
+        const bh = 0.3 + rnd() * 0.04;
+        const row = box(bx1 - bx0, bh, D * 0.72, [m.mahoganyDark, m.mahoganyDark, m.mahoganyDark, m.mahoganyDark, books, m.mahoganyDark], (bx0 + bx1) / 2, y, zc + 0.02);
+        g.add(row);
+      }
+    });
+    return g;
+  },
+
+  mansionWardrobe({ w, d }, m) {
+    // Шкаф для одежды: цоколь на ножках-«шарах», дверь с двумя филёнками, латунная ручка,
+    // карниз с фронтоном. На две клетки — две двери.
+    const g = new THREE.Group();
+    const W = w - 0.12, D = 0.6, H = 2.15;
+    const zc = -d / 2 + D / 2 + 0.03;
+    for (const sx of [-1, 1]) {
+      for (const sz of [-1, 1]) g.add(cylinder(0.05, 0.035, 0.08, m.mahogany, sx * (W / 2 - 0.07), 0, zc + sz * (D / 2 - 0.07), 6));
+    }
+    g.add(box(W + 0.02, 0.1, D + 0.02, m.mahogany, 0, 0.08, zc)); // цоколь
+    g.add(box(W, H - 0.28, D, m.mahogany, 0, 0.18, zc));
+    g.add(box(W + 0.1, 0.06, D + 0.08, m.mahogany, 0, H - 0.1, zc)); // карниз
+    g.add(box(W + 0.04, 0.04, D + 0.04, m.mahogany, 0, H - 0.14, zc));
+    // ступенчатое навершие над карнизом
+    g.add(box(W * 0.6, 0.07, D * 0.5, m.mahogany, 0, H - 0.04, zc + D * 0.22));
+    g.add(box(W * 0.3, 0.05, D * 0.4, m.mahogany, 0, H + 0.03, zc + D * 0.24));
+    const doors = w < 1.5 ? [0] : [-1, 1];
+    const dw = doors.length === 1 ? W - 0.08 : W / 2 - 0.05;
+    for (const sx of doors) {
+      const x = sx * (dw / 2 + 0.01);
+      g.add(box(dw, H - 0.4, 0.025, m.wardrobeDoor, x, 0.24, zc + D / 2));
+      const hx = doors.length === 1 ? W / 2 - 0.1 : sx * 0.07;
+      g.add(box(0.025, 0.12, 0.03, m.gold, hx, 1.05, zc + D / 2 + 0.025));
+    }
+    return g;
+  },
+
+  mansionFloorLamp(_, m, item, lights) {
+    // Торшер особняка: латунная стойка с утолщениями, абажур из ткани с бахромой.
+    const g = new THREE.Group();
+    const o = -0.15; // сдвиг в угол клетки
+    g.add(cylinder(0.16, 0.2, 0.05, m.gold, o, 0, o, 8));
+    g.add(cylinder(0.05, 0.08, 0.08, m.gold, o, 0.05, o, 6));
+    g.add(cylinder(0.018, 0.018, 1.3, m.gold, o, 0.1, o, 6));
+    for (const y of [0.55, 1.05]) g.add(cylinder(0.035, 0.035, 0.05, m.gold, o, y, o, 6));
+    g.add(cylinder(0.13, 0.25, 0.3, m.fabricShade, o, 1.36, o, 10));
+    g.add(cylinder(0.255, 0.255, 0.06, m.fringe, o, 1.3, o, 10)); // бахрома
+    const light = lampLight(lights, item.lightColor || '#ffc477', item.lightIntensity ?? 2.2,
+      item.lightDistance ?? 4.5, item.lightDecay ?? 1, o, 1.4, o, item.halo);
+    g.add(light);
+    if (light.userData.halo) g.add(light.userData.halo);
+    return g;
+  },
+
+  mansionPlant(_, m) {
+    // Пальма в латунной кадке на низкой подставке: длинные дуговые листья.
+    const g = new THREE.Group();
+    g.add(cylinder(0.2, 0.2, 0.06, m.mahogany, 0, 0, 0, 8)); // подставка
+    g.add(cylinder(0.2, 0.15, 0.36, m.gold, 0, 0.06, 0, 8));
+    g.add(cylinder(0.21, 0.21, 0.03, m.gold, 0, 0.4, 0, 8));
+    g.add(cylinder(0.18, 0.18, 0.02, m.soil, 0, 0.41, 0, 8));
+    const rnd = tex.random(21);
+    for (let i = 0; i < 8; i++) {
+      const a = i * 2.4 + rnd() * 0.4;
+      const len = 0.55 + rnd() * 0.35;
+      const tilt = 0.35 + rnd() * 0.45;
+      // лист из трёх отрезков, всё круче вниз — дуга
+      let x = 0, y = 0.42, z = 0;
+      for (let k = 0; k < 3; k++) {
+        const pitch = tilt + k * 0.45;
+        const seg = len / 3;
+        const dx = Math.cos(a) * Math.sin(pitch) * seg, dz = Math.sin(a) * Math.sin(pitch) * seg;
+        const dy = Math.cos(pitch) * seg;
+        const leaf = box(0.16 - k * 0.04, 0.015, seg, m.leafDark, 0, 0, 0);
+        leaf.position.set(x + dx / 2, y + dy / 2, z + dz / 2);
+        leaf.lookAt(leaf.position.x + dx, leaf.position.y + dy, leaf.position.z + dz);
+        g.add(steady(leaf));
+        x += dx; y += dy; z += dz;
+      }
+    }
+    return g;
+  },
+
+  sconce(_, m, item, lights) {
+    // Бра (этап 14): латунная пластина на стене, изогнутая рука, маленький абажур-тюльпан.
+    // Стена — плоскость z = 0, комната — в сторону +Z.
+    const g = new THREE.Group();
+    const y = item.height || 1.75;
+    g.add(steady(box(0.1, 0.18, 0.02, m.gold, 0, y - 0.12, 0.01)));
+    const arm = box(0.02, 0.02, 0.16, m.gold, 0, y - 0.04, 0.09);
+    g.add(arm);
+    g.add(box(0.02, 0.1, 0.02, m.gold, 0, y - 0.05, 0.17));
+    g.add(cylinder(0.08, 0.04, 0.12, m.fabricShade, 0, y + 0.03, 0.17, 8));
+    const light = lampLight(lights, item.lightColor || '#ffc477', item.lightIntensity ?? 1.5,
+      item.lightDistance ?? 3, item.lightDecay ?? 1.5, 0, y + 0.06, 0.2, item.halo);
+    g.add(light);
+    if (light.userData.halo) g.add(light.userData.halo);
+    return g;
+  },
+
+  painting(_, m, item) {
+    // Картина маслом в золочёной раме. Картина нарисована кодом (tex.oilPainting).
+    const g = new THREE.Group();
+    const W = item.size?.[0] || 0.5, H = item.size?.[1] || 0.62, y = item.height || 1.6;
+    const canvas = new THREE.Mesh(new THREE.PlaneGeometry(W, H), lambert({ map: tex.oilPainting(item.seed || 1) }));
+    canvas.position.set(0, y, 0.03);
+    canvas.userData.noSnap = true;
+    g.add(canvas);
+    g.add(goldFrame(m, W, H, y, 0.06));
+    return g;
+  },
+
+  sideLamp(_, m, item, lights) {
+    // Круглый столик на одной ножке и настольная лампа с абажуром (этап 14).
+    // Невысокий (~1 ед.), чтобы в переднем углу не загораживать персонажей.
+    const g = new THREE.Group();
+    const o = 0.1; // ближе к углу клетки
+    g.add(cylinder(0.16, 0.18, 0.03, m.woodDark, o, 0, o, 8));
+    g.add(cylinder(0.035, 0.05, 0.52, m.woodDark, o, 0.03, o, 6));
+    g.add(cylinder(0.25, 0.25, 0.04, m.woodDark, o, 0.55, o, 10));
+    g.add(cylinder(0.06, 0.08, 0.05, m.gold, o, 0.59, o, 6));
+    g.add(cylinder(0.015, 0.015, 0.2, m.gold, o, 0.64, o, 6));
+    g.add(cylinder(0.09, 0.15, 0.17, m.shade, o, 0.8, o, 8));
+    const light = lampLight(lights, item.lightColor || '#ffc477', item.lightIntensity ?? 3,
+      item.lightDistance ?? 4, item.lightDecay ?? 1.2, o, 0.86, o, item.halo);
+    g.add(light);
+    if (light.userData.halo) g.add(light.userData.halo);
     return g;
   },
 
@@ -219,7 +548,7 @@ const builders = {
 
   // ---------- «домик щелочи» ----------
 
-  designDesk({ w, d }, m) {
+  designDesk({ w, d }, m, item, lights) {
     // Длинный белый стол на чёрных металлических рамах, посередине — растение и лампа.
     const g = new THREE.Group();
     const depth = 0.7, top = 0.725, W = w - 0.1;
@@ -248,6 +577,13 @@ const builders = {
     g.add(arm);
     const head = cylinder(0.035, 0.07, 0.08, m.metalBlack, 0.24, y + 0.32, zc - 0.14);
     g.add(head);
+    if (item.lampLight) {
+      // свет настольной лампы (этап 14): тёплое пятно на столе и на сидящем
+      const { color = '#ffb35c', intensity = 2, distance = 3, decay = 1.5, halo: hs } = item.lampLight;
+      const light = lampLight(lights, color, intensity, distance, decay, 0.24, y + 0.26, zc - 0.14, hs);
+      g.add(light);
+      if (light.userData.halo) g.add(light.userData.halo);
+    }
     // кружка
     g.add(cylinder(0.035, 0.035, 0.08, m.mug, 0.05, y, zc + 0.12));
     return g;
@@ -276,6 +612,12 @@ const builders = {
     scr.position.set(0, 0.118, 0.0005);
     lid.add(scr);
     g.add(lid);
+    // Весь макбук без дрожания: клавиатура, тачпад и экран лежат в полмиллиметра над
+    // корпусом и при прыжке вершин проваливались в него — текстура мигала и скакала.
+    // Материалы макбука больше нигде не используются, так что дрожание у них не включится.
+    g.traverse((o) => {
+      if (o.isMesh) o.userData.noSnap = true;
+    });
     return g;
   },
 
@@ -410,16 +752,95 @@ const builders = {
     return g;
   },
 
+  mansionWindow({ w }, m, item) {
+    // Окно особняка (этап 14): деревянная рама, по секции на клетку, в каждой мелкий
+    // переплёт; подоконник над панелями; тяжёлые бархатные шторы и ламбрекен.
+    // Шторы кончаются над столом — иначе проходили бы сквозь столешницу.
+    const g = new THREE.Group();
+    const y0 = item.sill || 0.95, y1 = item.top || 2.3, H = y1 - y0, W = w - 0.1;
+    const view = new THREE.Mesh(
+      new THREE.PlaneGeometry(W, H),
+      new THREE.MeshBasicMaterial({ map: tex.cityView(w, item.view === 'night') }),
+    );
+    view.position.set(0, y0 + H / 2, 0.015);
+    view.userData.noSnap = true; // плоско лежит на стене — без дрожания, иначе стена его перекрывает
+    g.add(view);
+    const frame = m.windowFrame;
+    const bar = 0.08, deep = 0.07;
+    g.add(box(W + bar, bar, deep, frame, 0, y0 - bar / 2, deep / 2));
+    g.add(box(W + bar, bar, deep, frame, 0, y1 - bar / 2, deep / 2));
+    for (let i = 0; i <= w; i++) {
+      const x = -W / 2 + (W * i) / w;
+      g.add(box(i === 0 || i === w ? bar : 0.06, H, deep, frame, x, y0, deep / 2));
+      if (i === w) break;
+      // переплёт: две колонки, четыре ряда стёкол
+      const sw = W / w;
+      g.add(box(0.022, H, 0.04, frame, x + sw / 2, y0, 0.03));
+      for (let r = 1; r < 4; r++) g.add(box(sw, 0.022, 0.04, frame, x + sw / 2, y0 + (H * r) / 4 - 0.011, 0.03));
+    }
+    g.add(box(W + 0.2, 0.05, 0.18, frame, 0, y0 - 0.07, 0.09)); // подоконник
+    // шторы: складки — бруски разной глубины
+    const top = item.curtainTop || 2.44, bottom = y0 - 0.15;
+    const pleat = 0.1, n = 4;
+    for (const side of [-1, 1]) {
+      for (let k = 0; k < n; k++) {
+        const x = side * (W / 2 + 0.05 - (k + 0.5) * pleat);
+        const dz = k % 2 ? 0.07 : 0.1;
+        g.add(box(pleat + 0.01, top - bottom, dz, m.velvet, x, bottom, 0.02 + dz / 2));
+      }
+    }
+    // Лучи ночного света из окна (этап 14): по наклонной полупрозрачной полосе на каждую
+    // секцию, яркие у стекла и тающие к полу, с тенью от переплёта посередине.
+    // Не ловят клики, не обводятся, при запекании прячутся (имя shaft).
+    if (item.shafts) {
+      const sw = W / w;
+      const mat = new THREE.MeshBasicMaterial({
+        map: shaftTexture(), color: item.shaftColor || '#9fb4ff', transparent: true, opacity: item.shafts,
+        blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false,
+      });
+      const reach = item.shaftReach || 1.9; // как далеко в комнату ложится луч
+      for (let i = 0; i < w; i++) {
+        const x = -W / 2 + sw * (i + 0.5);
+        const geo = new THREE.BufferGeometry();
+        const hw = sw / 2 - 0.05;
+        // верх — у стекла на высоте окна, низ — на полу в глубине комнаты
+        geo.setAttribute('position', new THREE.Float32BufferAttribute([
+          x - hw, y1 - 0.1, 0.06, x + hw, y1 - 0.1, 0.06, x + hw + 0.1, 0.02, reach, x - hw + 0.1, 0.02, reach,
+        ], 3));
+        geo.setAttribute('uv', new THREE.Float32BufferAttribute([0, 1, 1, 1, 1, 0, 0, 0], 2));
+        geo.setIndex([0, 2, 1, 0, 3, 2]);
+        const shaft = new THREE.Mesh(geo, mat);
+        shaft.name = 'shaft';
+        shaft.userData.noSnap = true;
+        shaft.userData.noOutline = true;
+        shaft.raycast = () => {};
+        g.add(shaft);
+      }
+    }
+    g.add(box(W + 0.1, 0.24, 0.14, m.velvet, 0, top - 0.24, 0.09)); // ламбрекен
+    g.add(box(W + 0.1, 0.035, 0.145, m.gold, 0, top - 0.27, 0.09)); // бахрома
+    return g;
+  },
+
   poster(_, m, item) {
     // Плакат в тонкой рамке. Картинка — поле image в data.js (пропорции 4:5);
     // если картинки нет — рисуется текстом (title, lines, color, textColor).
     const g = new THREE.Group();
     const W = 0.72, H = 0.9, y = item.height || 1.75;
     const map = item.image ? tex.imagePoster(`${import.meta.env.BASE_URL}${item.image}`) : tex.poster(item);
-    const paper = new THREE.Mesh(new THREE.PlaneGeometry(W, H), lambert({ map }));
+    // Плакат не зависит от ламп (как будто его подсвечивает своя лампа над рамой): в полумраке
+    // особняка он иначе почти не читается, а это анонс курса. Цвет — чуть тёплый и приглушённый.
+    const paper = new THREE.Mesh(
+      new THREE.PlaneGeometry(W, H),
+      item.selfLit ? new THREE.MeshBasicMaterial({ map, color: item.selfLit }) : lambert({ map }),
+    );
     paper.position.set(0, y, 0.025);
     paper.userData.noSnap = true;
     g.add(paper);
+    if (item.frame === 'gold') {
+      g.add(goldFrame(m, W, H, y, 0.07)); // особняк: плакат как картина в золочёной раме
+      return g;
+    }
     const f = 0.03;
     // Тёмная подложка под рамкой: рамка дрожит, а бумага нет — в щели видна подложка, а не обои.
     const backing = new THREE.Mesh(new THREE.PlaneGeometry(W + f * 2, H + f * 2), lambert({ color: '#26252b' })); // свой материал: дрожание включается на материал
@@ -450,7 +871,7 @@ function loadFurnitureModel(obj, item) {
           map.minFilter = THREE.NearestFilter;
           map.generateMipmaps = false;
         }
-        o.material = lambert({ map }); // тот же свет, что у остальной комнаты
+        o.material = lambert({ map, color: item.tint || '#ffffff' }); // тот же свет, что у остальной комнаты; tint — перекраска
       });
       applyPS1(gltf.scene);
       obj.clear();
@@ -459,16 +880,52 @@ function loadFurnitureModel(obj, item) {
     .catch((e) => console.warn(`Не загрузилась модель «${item.model}», остаётся заглушка.`, e));
 }
 
+// Склеить детали предмета с одинаковым материалом в один меш (этап 14): мебель из десятков
+// брусков иначе даёт сотни отдельных отрисовок за кадр — на слабом телефоне это дорого.
+// Не трогаем: детали без обводки (noOutline: тени, лучи), с несколькими материалами,
+// светящиеся «спрайты» и всё, что не меш. Детали без дрожания (noSnap) склеиваются отдельно.
+function mergeByMaterial(group) {
+  group.updateMatrixWorld(true);
+  const toLocal = group.matrixWorld.clone().invert(); // детали — в системе самого предмета
+  const buckets = new Map();
+  group.traverse((o) => {
+    if (!o.isMesh || Array.isArray(o.material) || o.userData.noOutline) return;
+    // детали без дрожания склеиваются отдельно и остаются без дрожания
+    const key = `${o.material.uuid}:${o.userData.noSnap ? 1 : 0}`;
+    if (!buckets.has(key)) buckets.set(key, []);
+    buckets.get(key).push(o);
+  });
+  for (const meshes of buckets.values()) {
+    const { material } = meshes[0];
+    const steadyPart = Boolean(meshes[0].userData.noSnap);
+    if (meshes.length < 2) continue;
+    const geos = meshes.map((o) => {
+      const g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone();
+      return g.applyMatrix4(toLocal.clone().multiply(o.matrixWorld));
+    });
+    const merged = mergeGeometries(geos);
+    if (!merged) continue;
+    for (const o of meshes) o.removeFromParent();
+    const mesh = new THREE.Mesh(merged, material);
+    if (steadyPart) mesh.userData.noSnap = true;
+    group.add(mesh);
+  }
+}
+
 // ---------- Сборка комнаты ----------
-export function buildRoom(room, furniture) {
+// baked — запечённый свет из data.js (lighting.baked): карты света пола и двух высоких стен.
+export function buildRoom(room, furniture, baked = null) {
   const group = new THREE.Group();
   const lights = [];
   const objects = {}; // id предмета → его 3D-группа
   const { columns: C, rows: R, wallHeight: H, colors } = room;
 
+  // Особняк (этап 14): у room в data.js есть wainscot — тёмные обои с узором, панели по низу стен,
+  // паркет «ёлочкой». Без него — прежняя светлая студия.
+  const mansion = Boolean(room.wainscot);
   const t = {
-    planks: tex.planks(colors.floor),
-    wallpaper: tex.wallpaper(colors.wallpaper),
+    planks: mansion ? tex.herringbone(colors.floor) : tex.planks(colors.floor),
+    wallpaper: mansion ? tex.damask(colors.wallpaper, colors.wallpaperPattern) : tex.wallpaper(colors.wallpaper),
     wood: tex.wood(colors.wood),
   };
 
@@ -487,6 +944,21 @@ export function buildRoom(room, furniture) {
     sky: new THREE.MeshBasicMaterial({ map: tex.sky() }),
     deskTop: lambert({ color: '#eeebe4' }),
     metalBlack: lambert({ color: '#26252b' }),
+    windowFrame: lambert({ map: t.wood, color: '#6a5446' }),
+    // особняк (этап 14): красное дерево, филёнки, кожа, корешки книг
+    mahogany: lambert({ map: tex.wood(colors.mahogany || '#5a2e1a') }),
+    mahoganyDark: lambert({ map: tex.wood(colors.mahogany || '#5a2e1a'), color: '#6a6a6a' }),
+    mahoganyPanel: lambert({ map: tex.wainscot(colors.mahogany || '#5a2e1a') }),
+    wardrobeDoor: lambert({ map: tex.repeated(tex.wainscot(colors.mahogany || '#5a2e1a'), 1, 2) }), // две филёнки
+    leatherTop: lambert({ map: tex.leather(colors.leather || '#2f4a32') }),
+    bookRows: [1, 2, 3, 4, 5].map((seed) => lambert({ map: tex.bookSpines(seed) })),
+    greenShade: lambert({ color: '#2f6a3c', emissive: '#3c8a4a', emissiveIntensity: 0.6 }),
+    velvetSeat: lambert({ map: tex.velvet('#6a1f24') }),
+    goldDark: lambert({ color: '#5e4520' }),
+    fabricShade: lambert({ color: '#e8c89a', emissive: '#ffa850', emissiveIntensity: 0.6 }),
+    fringe: lambert({ color: '#c9a050', emissive: '#a06a20', emissiveIntensity: 0.4 }),
+    leafDark: lambert({ color: '#3f6a3a' }),
+    gold: lambert({ color: '#b08a3e' }),
     silver: lambert({ color: '#c6cad1' }),
     silverDark: lambert({ color: '#a9adb5' }),
     keys: lambert({ color: '#2e2f35' }),
@@ -504,35 +976,101 @@ export function buildRoom(room, furniture) {
     books: ['#9c3a32', '#2f5d8a', '#d1a63a', '#3d7a4a', '#6b4a8a', '#c9c2b0', '#2b2b30'].map((c) => lambert({ color: c })),
   };
 
+  // Запечённый свет (этап 14, tools/blender/bake.py): пол и стены не берут живые лампы,
+  // а показывают текстуру × карту света. Карта света сглажена (не пиксельная) — ступеньки
+  // ей добавляет палитра PS1. Копии карт с другим кадрированием обновляются после загрузки.
+  let lit = null;
+  if (baked && mansion) {
+    const parts = [];
+    const load = (name) =>
+      new THREE.TextureLoader().load(`${import.meta.env.BASE_URL}${baked.dir}${name}.png`, () => {
+        for (const p of parts) p.needsUpdate = true;
+      });
+    const maps = { floor: load('floor'), north: load('north'), west: load('west') };
+    for (const t of Object.values(maps)) t.colorSpace = THREE.SRGBColorSpace;
+    lit = {
+      maps,
+      // в MeshBasicMaterial карта света делится на π; в файлах значения поделены на exposure
+      intensity: (baked.brightness ?? 1) * (baked.exposure ?? 2) * Math.PI,
+      // часть карты стены по высоте y0…y1 (стена в файле — от −SLAB до H)
+      part(map, y0, y1) {
+        const t = map.clone();
+        t.repeat.set(1, (y1 - y0) / (H + SLAB));
+        t.offset.set(0, (y0 + SLAB) / (H + SLAB));
+        parts.push(t);
+        return t;
+      },
+      material(map, lightMap) {
+        return new THREE.MeshBasicMaterial({ map, lightMap, lightMapIntensity: this.intensity });
+      },
+    };
+    m.floor = lit.material(tex.repeated(t.planks, C, R), maps.floor);
+  }
+
   // Пол: плита толщиной SLAB, сверху доски (одна текстура на клетку).
   const floor = new THREE.Mesh(new THREE.BoxGeometry(C, SLAB, R), [m.slab, m.slab, m.floor, m.slab, m.slab, m.slab]);
   floor.position.set(C / 2, -SLAB / 2, R / 2);
+  floor.name = 'floor'; // по имени его находит запекание света (tools/blender/bake.py)
   floor.userData.isFloor = true;
   floor.userData.noSnap = true; // без дрожания, иначе перекрывает ковёр (см. ps1.js)
   group.add(floor);
 
   // Стены. Порядок граней коробки: +X, −X, +Y (верх), −Y, +Z, −Z.
   // Внутренняя грань — в обоях, остальные — цвет «среза».
-  function wall(x0, x1, z0, z1, h, innerFace, repeatW) {
-    const inner = lambert({ map: tex.repeated(t.wallpaper, repeatW, h + SLAB) });
+  // y0…y1 — по высоте (низ стены уходит под пол на SLAB), inner — материал внутренней грани.
+  function wall(x0, x1, z0, z1, y0, y1, innerFace, inner) {
     const mats = [m.cut, m.cut, m.cut, m.cut, m.cut, m.cut];
     mats[innerFace] = inner;
-    const mesh = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, h + SLAB, z1 - z0), mats);
-    mesh.position.set((x0 + x1) / 2, (h - SLAB) / 2, (z0 + z1) / 2);
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, y1 - y0, z1 - z0), mats);
+    mesh.name = 'wall'; // по имени стены прячет запекание света (tools/blender/bake.py)
+    mesh.position.set((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
     // Стены — огромные плоскости, как пол: без дрожания, иначе при прыжке вершин
     // их плоскость «наклоняется» и перекрывает то, что висит на них (окно, плакат).
     mesh.userData.noSnap = true;
     group.add(mesh);
   }
-  wall(-WALL_T, C, -WALL_T, 0, H, 4, C); // задняя (north), внутрь смотрит грань +Z
-  wall(-WALL_T, 0, 0, R, H, 0, R); // левая (west), внутрь смотрит +X
-  // Низкие «срезанные» передние стены, как в режиме «стены опущены».
-  wall(-WALL_T, C + WALL_T, R, R + WALL_T, 0.22, 5, C);
-  wall(C, C + WALL_T, -WALL_T, R, 0.22, 1, R);
-
-  // Плинтусы
-  group.add(box(C, 0.1, 0.03, m.woodDark, C / 2, 0, 0.015));
-  group.add(box(0.03, 0.1, R, m.woodDark, 0.015, 0, R / 2));
+  const paper = (len, h) => tex.repeated(t.wallpaper, len * 2, h * 2); // плитка обоев — полклетки
+  const walls = [
+    // [x0, x1, z0, z1, высота, грань внутрь, длина вдоль стены]
+    [-WALL_T, C, -WALL_T, 0, H, 4, C], // задняя (north), внутрь смотрит грань +Z
+    [-WALL_T, 0, 0, R, H, 0, R], // левая (west), внутрь смотрит +X
+    // Низкие «срезанные» передние стены, как в режиме «стены опущены».
+    [-WALL_T, C + WALL_T, R, R + WALL_T, 0.22, 5, C],
+    [C, C + WALL_T, -WALL_T, R, 0.22, 1, R],
+  ];
+  if (!mansion) {
+    for (const [x0, x1, z0, z1, h, face, len] of walls) {
+      wall(x0, x1, z0, z1, -SLAB, h, face, lambert({ map: tex.repeated(t.wallpaper, len, h + SLAB) }));
+    }
+    // Плинтусы
+    group.add(box(C, 0.1, 0.03, m.woodDark, C / 2, 0, 0.015));
+    group.add(box(0.03, 0.1, R, m.woodDark, 0.015, 0, R / 2));
+  } else {
+    // Низ — деревянные панели (одна филёнка на клетку), выше — обои. Текстура панелей
+    // нарисована на высоту wainscot; то, что ниже пола, не видно.
+    const WH = room.wainscot;
+    const panels = tex.wainscot(colors.wainscot);
+    walls.forEach(([x0, x1, z0, z1, h, face, len], i) => {
+      // у задней и левой стены — запечённый свет, у низких передних — живой
+      const lm = lit && [lit.maps.north, lit.maps.west][i];
+      const mat = (map, y0, y1) => (lm ? lit.material(map, lit.part(lm, y0, y1)) : lambert({ map }));
+      const low = Math.min(h, WH);
+      const map = tex.repeated(panels, len, (low + SLAB) / WH);
+      map.offset.y = 1 - ((((low + SLAB) / WH) % 1) || 1); // верх панели — по верху стены
+      wall(x0, x1, z0, z1, -SLAB, low, face, mat(map, -SLAB, low));
+      if (h > WH) wall(x0, x1, z0, z1, WH, h, face, mat(paper(len, h - WH), WH, h));
+    });
+    const rail = lambert({ map: t.wood, color: '#5a4636' });
+    const along = (y, hh, depth) => {
+      // полоса по двум высоким стенам: задней и левой
+      // без дрожания: лежат вплотную к стене, при прыжке вершин уходили бы в неё
+      group.add(steady(box(C, hh, depth, rail, C / 2, y, depth / 2)));
+      group.add(steady(box(depth, hh, R, rail, depth / 2, y, R / 2)));
+    };
+    along(0, 0.12, 0.035); // плинтус
+    along(WH - 0.02, 0.05, 0.05); // поручень над панелями
+    along(H - 0.14, 0.14, 0.06); // карниз под потолком
+  }
 
   // Мебель
   for (const item of furniture) {
@@ -545,7 +1083,8 @@ export function buildRoom(room, furniture) {
       ...m,
       sofa: lambert({ map: tex.fabric(item.color || '#5b6e9c') }),
       sofaLight: lambert({ map: tex.fabric(item.color || '#5b6e9c'), color: '#e6e6e6' }),
-      rug: lambert({ map: tex.rug(item.color || '#8c3b3b') }),
+      velvet: lambert({ map: tex.velvet(item.curtainColor || '#5a1a1e') }),
+      rug: lambert({ map: item.pattern === 'persian' ? tex.persianRug(item) : tex.rug(item.color || '#8c3b3b') }),
     };
     const fp = footprint(item.cells);
     let obj;
@@ -554,11 +1093,13 @@ export function buildRoom(room, furniture) {
       // Ширина — сколько клеток вдоль стены занимает предмет (у панорамного окна — несколько).
       const w = item.wall === 'west' ? fp.sizeZ : fp.sizeX;
       obj = build({ w, d: 1 }, itemMats, item, lights);
+      // shift — сдвиг вдоль стены от центра клеток (плюс — к зрителю на левой стене, вправо на задней)
+      const shift = item.shift || 0;
       if (item.wall === 'west') {
-        obj.position.set(0, 0, fp.z);
+        obj.position.set(0, 0, fp.z + shift);
         obj.rotation.y = FACING_ANGLE.east;
       } else {
-        obj.position.set(fp.x, 0, 0);
+        obj.position.set(fp.x + shift, 0, 0);
       }
     } else {
       const angle = FACING_ANGLE[item.facing || 'south'];
@@ -574,6 +1115,7 @@ export function buildRoom(room, furniture) {
     objects[item.id] = obj;
     group.add(obj);
     if (item.model) loadFurnitureModel(obj, item);
+    else mergeByMaterial(obj);
   }
 
   return { group, lights, objects };

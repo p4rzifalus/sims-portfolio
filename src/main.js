@@ -23,6 +23,8 @@ import {
   welcome,
   dossier,
   radio as radioData,
+  lighting,
+  camera as cameraData,
 } from './data.js';
 import { typoDeep } from './typo.js';
 import { buildRoom } from './room.js';
@@ -67,15 +69,25 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(ps1.fogColor);
 scene.fog = new THREE.FogExp2(ps1.fogColor, ps1.fogStrength);
 
-const built = buildRoom(room, furniture);
+const built = buildRoom(room, furniture, lighting?.baked);
 applyPS1(built.group);
 scene.add(built.group);
 
 // Свет: мягкий общий + направленный «из окна-за-кадром» + торшер (внутри комнаты).
-scene.add(new THREE.HemisphereLight('#fff1dc', '#4a3b55', 2.2));
-const sun = new THREE.DirectionalLight('#fff4e0', 2.0);
-sun.position.set(8, 10, 6);
-scene.add(sun);
+// Если в data.js есть lighting (особняк, этап 14) — полумрак: слабый общий свет и холодный из окна.
+if (lighting) {
+  const { ambient, moon } = lighting;
+  scene.add(new THREE.HemisphereLight(ambient.sky, ambient.ground, ambient.intensity));
+  const moonLight = new THREE.DirectionalLight(moon.color, moon.intensity);
+  moonLight.position.set(...moon.from);
+  moonLight.target.position.set(room.columns / 2, 0, room.rows / 2);
+  scene.add(moonLight, moonLight.target);
+} else {
+  scene.add(new THREE.HemisphereLight('#fff1dc', '#4a3b55', 2.2));
+  const sun = new THREE.DirectionalLight('#fff4e0', 2.0);
+  sun.position.set(8, 10, 6);
+  scene.add(sun);
+}
 
 // ---------- Камера ----------
 // Ближняя и дальняя границы с запасом вокруг комнаты (камера в 20 клетках от центра).
@@ -123,14 +135,63 @@ function boxCorners(box) {
 // Вся комната целиком (обычный вид).
 const roomQuat = camera.quaternion.clone();
 const roomBox = new THREE.Box3(new THREE.Vector3(-0.15, -0.3, -0.15), new THREE.Vector3(room.columns + 0.15, room.wallHeight, room.rows + 0.15));
-function roomShot(aspect) {
-  if (!MOBILE.matches) return makeShot(target, roomQuat, boxCorners(roomBox), SCREEN_MARGINS, aspect);
-  // На телефоне свободная часть экрана — между портретами сверху и панелью снизу.
+// Свободная часть экрана (доли): на компьютере — SCREEN_MARGINS, на телефоне —
+// между портретами сверху и панелью снизу.
+function freeMargins() {
+  if (!MOBILE.matches) return SCREEN_MARGINS;
   const h = window.innerHeight;
   const top = document.querySelector('.portraits')?.getBoundingClientRect().bottom ?? 0;
   const hud = document.querySelector('.hud')?.getBoundingClientRect().height ?? h * 0.35;
-  const margins = { left: 0, right: 0, top: (top + 8) / h, bottom: (hud + 18) / h };
-  return makeShot(target, roomQuat, boxCorners(roomBox), margins, aspect, MOBILE_ZOOM);
+  return { left: 0, right: 0, top: (top + 8) / h, bottom: (hud + 18) / h };
+}
+function roomShot(aspect) {
+  return makeShot(target, roomQuat, boxCorners(roomBox), freeMargins(), aspect, MOBILE.matches ? MOBILE_ZOOM : 1);
+}
+
+// Камера за персонажем: окно в zoom раз меньше комнаты (по высоте), той же формы,
+// что свободная часть экрана, с центром на followPoint; окно не выходит за комнату —
+// у стены камера останавливается. Всё — в плоскости экрана (x вправо, y вверх).
+const roomQuatInv = roomQuat.clone().invert();
+const roomExtent = (() => {
+  const e = { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity };
+  for (const c of boxCorners(roomBox)) {
+    const v = c.clone().sub(target).applyQuaternion(roomQuatInv);
+    e.minX = Math.min(e.minX, v.x); e.maxX = Math.max(e.maxX, v.x);
+    e.minY = Math.min(e.minY, v.y); e.maxY = Math.max(e.maxY, v.y);
+  }
+  return e;
+})();
+const followPoint = new THREE.Vector3(); // куда смотрит камера (плавно догоняет персонажа)
+let followReady = false;
+const following = () => Boolean(cameraData?.follow);
+function followShot(aspect) {
+  const m = freeMargins();
+  const e = roomExtent;
+  const zoom = (MOBILE.matches ? cameraData.mobileZoom : cameraData.zoom) || 1;
+  const h = (e.maxY - e.minY) / zoom;
+  const w = h * ((aspect * (1 - m.left - m.right)) / (1 - m.top - m.bottom));
+  const p = followPoint.clone().sub(target).applyQuaternion(roomQuatInv);
+  const fit = (v, lo, hi, size) => (size >= hi - lo ? (lo + hi) / 2 : THREE.MathUtils.clamp(v, lo + size / 2, hi - size / 2));
+  const cx = fit(p.x, e.minX, e.maxX, w), cy = fit(p.y, e.minY, e.maxY, h);
+  const corners = [[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([sx, sy]) =>
+    new THREE.Vector3(cx + (sx * w) / 2, cy + (sy * h) / 2, 0).applyQuaternion(roomQuat).add(target));
+  return makeShot(target, roomQuat, corners, m, aspect);
+}
+// Обычный вид: за персонажем или вся комната.
+function viewShot(aspect) {
+  return following() && followReady ? followShot(aspect) : roomShot(aspect);
+}
+// Точка над выбранным персонажем (на уровне груди), к ней плавно едет followPoint.
+function updateFollow(dt) {
+  if (!following() || !selected) return;
+  const goal = selected.root.position.clone();
+  goal.y += 0.8;
+  if (!followReady) {
+    followPoint.copy(goal);
+    followReady = true;
+    return;
+  }
+  followPoint.lerp(goal, 1 - Math.exp(-dt * (cameraData.speed || 3)));
 }
 
 // Предмет на стене прямо перед камерой: камера смотрит перпендикулярно стене.
@@ -151,7 +212,7 @@ function currentAspect() {
 }
 function refreshShots() {
   const aspect = currentAspect();
-  const target = cam.closeUp ? closeUpShot(cam.closeUp, aspect) : roomShot(aspect);
+  const target = cam.closeUp ? closeUpShot(cam.closeUp, aspect) : viewShot(aspect);
   if (!cam.to || cam.t >= CLOSEUP_TIME) cam.from = target; // не в пути — просто встать в кадр
   cam.to = target;
 }
@@ -177,7 +238,7 @@ const smooth = (x) => x * x * (3 - 2 * x);
 
 // ---------- PS1 ----------
 const pass = new PS1Pass();
-pass.setPalette(ps1.colorLevels, ps1.dither);
+pass.setPalette(ps1.colorLevels, ps1.dither, ps1.vignette ?? 0);
 let ps1On = ps1.enabledAtStart;
 
 // Размер области, на которую растянута картинка (в CSS-пикселях).
@@ -458,7 +519,7 @@ function moveCamera(closeUp) {
     quat: camera.quaternion.clone(),
     frame: { left: camera.left, right: camera.right, top: camera.top, bottom: camera.bottom },
   };
-  cam.to = closeUp ? closeUpShot(closeUp, currentAspect()) : roomShot(currentAspect());
+  cam.to = closeUp ? closeUpShot(closeUp, currentAspect()) : viewShot(currentAspect());
   cam.t = 0;
   document.body.classList.toggle('closeup', Boolean(closeUp));
 }
@@ -477,6 +538,22 @@ window.addEventListener('keydown', (e) => {
 
 // ---------- Цикл отрисовки ----------
 let last = performance.now();
+// Мерцание ламп (этап 14): живой свет и ореолы чуть дрожат, изредка лампа «моргает».
+// Запечённый на стенах свет не мерцает — как в играх того времени.
+function flickerLamps(t) {
+  const amp = lighting?.flicker ?? 0;
+  built.lights.forEach((light, i) => {
+    const base = light.userData.base;
+    if (base === undefined) return;
+    const p = i * 17.3;
+    let k = 1 + amp * (Math.sin(t * 7.1 + p) * 0.5 + Math.sin(t * 13.7 + p * 2) * 0.3 + Math.sin(t * 29.3 + p) * 0.2);
+    if (amp && Math.sin(t * 0.37 + p) > 0.995) k *= 0.55; // редкое «моргание»
+    light.intensity = base * k;
+    const h = light.userData.halo;
+    if (h) h.material.opacity = Math.min(1, 0.85 * k);
+  });
+}
+
 function frame() {
   const now = performance.now();
   const dt = Math.min(0.1, (now - last) / 1000); // не больше 0.1 с, если вкладка «спала»
@@ -484,8 +561,14 @@ function frame() {
   const t = now / 1000; // секунды с открытия страницы
 
   for (const ch of characters) ch.update(dt);
+  flickerLamps(t);
   if (debug.visible && selected) debug.setPath([selected.position, ...selected.path]);
   cam.t += dt;
+  // За персонажем: пока камера не едет к стене и обратно, кадр каждый раз новый.
+  updateFollow(dt);
+  if (following() && followReady && !cam.closeUp && cam.t >= CLOSEUP_TIME) {
+    cam.from = cam.to = followShot(currentAspect());
+  }
   const k = placeCamera(t);
   // Крупным планом персонажи не загораживают плакат: пока камера у стены, их не видно.
   const atWall = cam.closeUp ? k > 0.5 : k < 0.5;
@@ -511,6 +594,24 @@ if (import.meta.env.DEV) {
     renderer, pass, basePos, built, loadModel, renderPortrait, cam, openCloseUp, closeCloseUp, furniture, radio,
     get selected() {
       return selected;
+    },
+    // Выгрузить комнату (без персонажей) и лампы для запекания света:
+    // models-src/bake/scene.glb и lights.json, дальше — tools/blender/bake.py.
+    async exportForBake() {
+      const { GLTFExporter } = await import('three/addons/exporters/GLTFExporter.js');
+      built.group.updateMatrixWorld(true);
+      const glb = await new GLTFExporter().parseAsync(built.group, { binary: true, onlyVisible: false });
+      const lamps = built.lights.map((l) => ({
+        position: l.getWorldPosition(new THREE.Vector3()).toArray(),
+        color: `#${l.color.getHexString()}`,
+        intensity: l.userData.base ?? l.intensity, // без мерцания
+        distance: l.distance,
+      }));
+      const info = { room, lighting, lamps, furniture };
+      const post = (name, body) => fetch(`/__bake/${name}`, { method: 'POST', body });
+      await post('scene.glb', glb);
+      await post('lights.json', JSON.stringify(info, null, 2));
+      return { lamps: lamps.length, bytes: glb.byteLength };
     },
   };
 }

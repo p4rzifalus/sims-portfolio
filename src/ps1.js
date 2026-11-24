@@ -63,6 +63,8 @@ uniform float uQuantize;
 uniform float uOutline;
 uniform float uRadius;
 uniform vec3 uOutlineColor;
+uniform float uVignette;
+uniform float uAspect;
 
 // Матрица Байера 4×4: упорядоченный шум для дизеринга.
 float bayer2(vec2 a) { a = floor(a); return fract(dot(a, vec2(0.5, a.y * 0.75))); }
@@ -78,6 +80,9 @@ void main() {
   vec2 uv = (px + 0.5) / uLowRes;
   vec3 c = texture2D(tDiffuse, uv).rgb;
   c = toSRGB(clamp(c, 0.0, 1.0));
+  // Виньетка (этап 14): края кадра темнее, как на старом телевизоре.
+  vec2 vq = (uv - 0.5) * vec2(uAspect, 1.0);
+  c *= 1.0 - uVignette * smoothstep(0.35, 0.95, length(vq) * 1.25);
   if (uQuantize > 0.5) {
     float steps = uLevels - 1.0;
     float d = (bayer4(px) - 0.5) * uDither;
@@ -133,6 +138,8 @@ export class PS1Pass {
         uOutline: { value: 0 },
         uRadius: { value: 1 },
         uOutlineColor: { value: new THREE.Color(1, 0.97, 0.85) },
+        uVignette: { value: 0 },
+        uAspect: { value: 1 },
       },
       vertexShader: 'void main() { gl_Position = vec4(position.xy, 0.0, 1.0); }',
       fragmentShader: FINAL_FRAGMENT,
@@ -159,11 +166,13 @@ export class PS1Pass {
     this.mask.setSize(this.lowW, this.lowH);
     this.material.uniforms.uLowRes.value.set(this.lowW, this.lowH);
     this.material.uniforms.uScale.value = this.scale;
+    this.material.uniforms.uAspect.value = W / H;
   }
 
-  setPalette(levels, dither) {
+  setPalette(levels, dither, vignette = 0) {
     this.material.uniforms.uLevels.value = levels;
     this.material.uniforms.uDither.value = dither;
+    this.material.uniforms.uVignette.value = vignette;
   }
 
   // Режим PS1 или обычный: палитра, толщина обводки, сглаживание краёв.

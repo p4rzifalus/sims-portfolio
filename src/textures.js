@@ -182,7 +182,8 @@ export function designScreen(W = 32, H = 32) {
 // Вид из окна: петербург белой ночью. Ширина — 32 пикселя на клетку окна.
 // Сверху вниз: небо, дальний берег с домами, шпиль и купол, разведённый мост,
 // нева с отражениями, гранитная набережная.
-export function cityView(cells = 4) {
+// night — поздняя ночь: тёмно-синее небо, дома в тени, больше светящихся окон (этап 14).
+export function cityView(cells = 4, night = false) {
   const W = 32 * cells, H = 72;
   const HORIZON = 44, EMBANK = 61;
   const rnd0 = random(91);
@@ -200,9 +201,11 @@ export function cityView(cells = 4) {
   const mix = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
   const skyAt = (y) => {
     const t = y / HORIZON;
+    if (night) return t < 0.6 ? mix([14, 16, 40], [40, 44, 88], t / 0.6) : mix([40, 44, 88], [96, 84, 120], (t - 0.6) / 0.4);
     return t < 0.55 ? mix([118, 112, 178], [214, 156, 176], t / 0.55) : mix([214, 156, 176], [255, 214, 170], (t - 0.55) / 0.45);
   };
   const gold = [236, 190, 90];
+  const LIT = [255, 230, 150];
 
   function land(x, y) {
     // шпиль: башня и тонкая игла
@@ -228,7 +231,7 @@ export function cityView(cells = 4) {
     if (h && y >= HORIZON - h.h) {
       if (y === HORIZON - h.h) return shade(h.c, 1.1); // карниз
       if (x === h.x0) return shade(h.c, 0.8);
-      if ((x - h.x0) % 3 === 1 && (HORIZON - y) % 3 === 2) return ((x * 7919) ^ (y * 104729)) % 5 === 0 ? [255, 230, 150] : shade(h.c, 0.6); // в некоторых окнах свет
+      if ((x - h.x0) % 3 === 1 && (HORIZON - y) % 3 === 2) return ((x * 7919) ^ (y * 104729)) % (night ? 3 : 5) === 0 ? LIT : shade(h.c, 0.6); // в некоторых окнах свет
       return h.c;
     }
     return null;
@@ -237,11 +240,13 @@ export function cityView(cells = 4) {
   return makeTexture((x, y, rnd) => {
     if (y < HORIZON) {
       const l = land(x, y);
+      if (l && night) return l === LIT ? l : l === gold ? shade(gold, 0.75) : mix(shade(l, 0.3), skyAt(y), 0.2);
       if (l) return mix(l, skyAt(y), 0.18); // дымка на дальнем берегу
       let c = skyAt(y);
       if ((rnd() < 0.5 ? 0 : 1) && y % 7 === 3) c = shade(c, 1.02); // дизеринг полос
       const cloud = Math.sin(x * 0.11 + 2) + Math.sin(x * 0.05 + y * 0.4);
-      if (y > 10 && y < 16 && cloud > 1.4) c = mix(c, [255, 225, 225], 0.6);
+      if (y > 10 && y < 16 && cloud > 1.4) c = mix(c, night ? [70, 70, 110] : [255, 225, 225], 0.6);
+      if (night && y < 30 && rnd() < 0.012) c = [200, 205, 230]; // звёзды
       return c;
     }
     if (y < EMBANK) {
@@ -250,13 +255,14 @@ export function cityView(cells = 4) {
       const wob = Math.round(Math.sin(y * 1.7 + x * 0.3) * 1.5);
       const refl = ry > 0 ? land(x + wob, Math.floor(ry)) : null;
       let c = mix([60, 62, 110], skyAt(Math.max(0, ry)), 0.45);
-      if (refl) c = mix(c, refl, 0.35);
+      if (refl) c = mix(c, night && refl !== LIT ? shade(refl, 0.3) : refl, 0.35);
+      if (night) c = shade(c, 0.55);
       if (y % 3 === 0 && rnd() < 0.3) c = shade(c, 1.15); // блики ряби
       return c;
     }
     // гранит набережной
-    if (y === EMBANK) return [190, 170, 165];
-    return shade([150, 128, 125], 0.85 + rnd() * 0.25);
+    if (y === EMBANK) return night ? [80, 74, 84] : [190, 170, 165];
+    return shade(night ? [58, 52, 62] : [150, 128, 125], 0.85 + rnd() * 0.25);
   }, 92, W, H);
 }
 
@@ -329,4 +335,202 @@ export function imagePoster(url, W = 240, H = 300) {
   img.onerror = () => console.warn(`Картинка плаката не нашлась: ${url} (проверьте поле image в data.js)`);
   img.src = url;
   return tex;
+}
+
+// ---------- Особняк (этап 14): тёмные обои, панели, паркет, ковёр, бархат ----------
+
+// Обои с дамасским узором: зеркальный «цветок» на тёмном фоне, ряды сдвинуты на полшага.
+// Плитка 32×32 — это 0.5 × 0.5 клетки на стене.
+export function damask(hex, patternHex) {
+  const base = hexToRgb(hex);
+  const pat = hexToRgb(patternHex);
+  const mix = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
+  return makeTexture((x, y, rnd) => {
+    // два мотива на плитку: в центре и в углах (сдвиг на полшага)
+    const motif = (cx, cy) => {
+      let dx = Math.abs(((x - cx + 48) % 32) - 16) / 16; // 0…1, зеркально
+      let dy = (((y - cy + 48) % 32) - 16) / 16; // −1…1
+      dx *= 1.25;
+      // силуэт: капля-лист сверху, листья по бокам, ножка снизу
+      const body = dx * dx + (dy + 0.1) * (dy + 0.1) * 0.55 < 0.16 + 0.05 * Math.cos(dy * 9);
+      const tip = dy < -0.4 && dx < 0.12 * (1 + dy + 0.4) * 3 && dy > -0.85;
+      const leaves = Math.abs(dy - 0.35 + dx * 0.6) < 0.08 && dx > 0.25 && dx < 0.62;
+      const stem = dx < 0.06 && dy > 0.3 && dy < 0.75;
+      const hole = dx * dx + (dy + 0.12) * (dy + 0.12) < 0.025; // тёмная серединка
+      return (body || tip || leaves || stem) && !hole;
+    };
+    const on = motif(16, 16) || motif(0, 0);
+    let c = on ? mix(base, pat, 0.85 + rnd() * 0.15) : shade(base, 0.92 + rnd() * 0.12);
+    if (x % 16 === 0 && rnd() < 0.5) c = shade(c, 0.94); // старая бумага: лёгкие стыки и пятна
+    return c;
+  }, 61);
+}
+
+// Деревянные панели по низу стены: на клетку одна филёнка с фаской
+// (светлая грань сверху и слева, тень снизу и справа). 64×64 = клетка × высота панелей.
+export function wainscot(hex) {
+  const base = hexToRgb(hex);
+  return makeTexture((x, y, rnd) => {
+    let k = 1 + 0.07 * Math.sin(y * 0.9 + Math.sin(x * 0.2) * 2) + (rnd() - 0.5) * 0.08;
+    const m = 7; // ширина рамки
+    const inX = x >= m && x < 64 - m, inY = y >= m + 2 && y < 64 - m;
+    if (inX && inY) {
+      const e = Math.min(x - m, 63 - m - x, y - m - 2, 63 - m - y);
+      if (e < 3) {
+        // фаска: свет падает сверху-слева
+        const top = y - m - 2 === e || x - m === e;
+        k *= top ? 1.3 : 0.6;
+      } else k *= 0.9; // поле филёнки чуть темнее рамы
+    }
+    if (x === 0 || x === 63) k *= 0.55; // стык панелей
+    if (y < 2) k *= 1.35; // верхняя кромка
+    return shade(base, k);
+  }, 62, 64, 64);
+}
+
+// Паркет «ёлочкой»: дощечки 4×16 px, тайл 64×64 на клетку.
+// Клетка (i, j) в единицах ширины дощечки: t = (i − j) mod 8; t < 4 — лежит вдоль, иначе поперёк.
+export function herringbone(hex) {
+  const base = hexToRgb(hex);
+  const N = 4, Wd = 4;
+  const tone = (a, b) => 0.82 + (((a * 73856093) ^ (b * 19349663)) >>> 0) % 1000 / 1000 * 0.32;
+  return makeTexture((x, y, rnd) => {
+    const i = Math.floor(x / Wd), j = Math.floor(y / Wd);
+    const px = x % Wd, py = y % Wd;
+    const t = (((i - j) % (2 * N)) + 2 * N) % (2 * N);
+    let k;
+    if (t < N) {
+      // вдоль: доска в ряду j
+      const id = Math.floor((i - j) / (2 * N));
+      k = tone(j % 16, ((id % 2) + 2) % 2);
+      k *= 1 + 0.08 * Math.sin(x * 0.7 + j);
+      if (py === 0) k *= 0.62; // щель сверху
+      if (t === 0 && px === 0) k *= 0.62; // торец
+    } else {
+      const id = Math.floor((i - j - N) / (2 * N));
+      k = tone(100 + (i % 16), ((id % 2) + 2) % 2);
+      k *= 1 + 0.08 * Math.sin(y * 0.7 + i);
+      if (px === 0) k *= 0.62;
+      if (t === 2 * N - 1 && py === 0) k *= 0.62;
+    }
+    k *= 0.94 + rnd() * 0.1;
+    return shade(base, k);
+  }, 63, 64, 64);
+}
+
+// Персидский ковёр целиком (не плиткой): бахрома по коротким краям, кайма в три полосы,
+// поле с мелкими розетками, медальон в центре и уголки. W × H — пропорции ковра.
+export function persianRug({ color = '#7a1f1f', gold = '#c9a050', navy = '#1f2a48', cream = '#d8c9a8' } = {}, W = 96, H = 64) {
+  const red = hexToRgb(color), gd = hexToRgb(gold), nv = hexToRgb(navy), cr = hexToRgb(cream);
+  const FR = 3; // бахрома
+  return makeTexture((x, y, rnd) => {
+    const n = 0.9 + rnd() * 0.16;
+    if (x < FR || x >= W - FR) return (y % 2 === 0 ? shade(cr, 0.95) : shade(cr, 0.7)).map((v) => v * n);
+    const u = x - FR, w = W - 2 * FR;
+    const ax = Math.min(u, w - 1 - u), ay = Math.min(y, H - 1 - y); // расстояние до края
+    const edge = Math.min(ax, ay);
+    let c;
+    if (edge < 1) c = shade(nv, 0.6);
+    else if (edge < 3) c = nv;
+    else if (edge < 4) c = gd;
+    else if (edge < 8) {
+      // кайма: волна-«бегущая собака»
+      const s = ax < ay ? y : u;
+      const wave = Math.sin(s * 0.8) * 1.5 + 6;
+      c = Math.abs(edge - wave) < 0.8 ? gd : shade(red, 0.7);
+    } else if (edge < 9) c = gd;
+    else {
+      // поле
+      const cx = (w - 1) / 2, cy = (H - 1) / 2;
+      const dx = Math.abs(u - cx), dy = Math.abs(y - cy);
+      const dm = dx / 1.4 + dy; // ромб медальона
+      c = red;
+      if (dm < 5) c = gd;
+      else if (dm < 7) c = nv;
+      else if (dm < 13) c = (Math.round(dx) + Math.round(dy)) % 4 === 0 ? gd : shade(nv, 1.4);
+      else if (dm < 14) c = gd;
+      // уголки поля
+      else if (ax + ay < 24 && ax > 8 && ay > 8) c = (ax + ay) % 3 === 0 ? gd : nv;
+      // розетки по полю
+      else if ((Math.round(u / 2) + Math.round(y / 2)) % 5 === 0 && (u + y) % 2 === 0) c = shade(gd, 0.8);
+    }
+    return c.map((v) => v * n);
+  }, 64, W, H);
+}
+
+// Бархат штор: вертикальные складки (свет — тень), мелкий ворс.
+export function velvet(hex) {
+  const base = hexToRgb(hex);
+  return makeTexture((x, y, rnd) => {
+    let k = 0.75 + 0.35 * Math.max(0, Math.sin((x / 32) * Math.PI * 4));
+    k *= 0.93 + rnd() * 0.12;
+    return shade(base, k);
+  }, 65);
+}
+
+// Ряд книг на полке (этап 14): корешки разной ширины и высоты в старых переплётах,
+// золотые полоски, над книгами — тёмная щель. Одна текстура на полку вместо сотни брусков.
+export function bookSpines(seed = 1) {
+  const covers = [[96, 34, 30], [40, 62, 44], [34, 42, 74], [92, 64, 36], [36, 30, 30], [120, 92, 60], [70, 40, 56]];
+  const rnd0 = random(seed * 97 + 3);
+  const books = [];
+  for (let x = 0; x < 64; ) {
+    const w = 2 + Math.floor(rnd0() * 4);
+    books.push({ x0: x, x1: x + w, top: Math.floor(rnd0() * 14), c: covers[Math.floor(rnd0() * covers.length)], gap: rnd0() < 0.08, band: 4 + Math.floor(rnd0() * 6) });
+    x += w;
+  }
+  return makeTexture((x, y, rnd) => {
+    const b = books.find((bb) => x >= bb.x0 && x < bb.x1) || books[books.length - 1];
+    if (b.gap || y < b.top) return [16, 11, 9]; // щель над книгами
+    let k = 0.9 + rnd() * 0.15;
+    if (x === b.x0) k *= 0.55; // стык корешков
+    if (x === b.x1 - 1) k *= 0.8;
+    const fromTop = y - b.top;
+    if (fromTop === b.band || fromTop === b.band + 2 || y === 58) return [176, 140, 70].map((v) => v * k); // золотое тиснение
+    if (y > 61) k *= 0.6; // тень у полки
+    return b.c.map((v) => v * k * 1.6);
+  }, seed, 64, 64);
+}
+
+// Кожаная вставка столешницы: зелёная кожа с золотой рамкой тиснения.
+export function leather(hex = '#2f4a32') {
+  const base = hexToRgb(hex);
+  return makeTexture((x, y, rnd) => {
+    const e = Math.min(x, y, 63 - x, 31 - y);
+    if (e === 2) return [168, 132, 66];
+    let k = 0.88 + rnd() * 0.2;
+    if (e < 2) k *= 0.6;
+    return shade(base, k);
+  }, 66, 64, 32);
+}
+
+// Картина маслом (этап 14): тёмный пейзаж — грозовое небо, холмы, одинокое дерево,
+// мазки и пожелтевший лак. Нарисована кодом, не копия чьей-то картины.
+export function oilPainting(seed = 1, W = 48, H = 60) {
+  const mix = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
+  const rnd0 = random(seed * 31 + 7);
+  const hill = (x) => H * 0.62 + Math.sin(x * 0.13 + rnd0() * 0) * 4 + Math.sin(x * 0.05 + seed) * 5;
+  const treeX = Math.round(W * (0.3 + rnd0() * 0.4));
+  return makeTexture((x, y, rnd) => {
+    const stroke = Math.sin(x * 0.9 + y * 0.35) * 0.06 + (rnd() - 0.5) * 0.1; // мазки
+    let c;
+    const hy = hill(x);
+    if (y < hy) {
+      const t = y / hy;
+      c = mix([38, 44, 40], [150, 128, 84], Math.pow(t, 1.6)); // небо: тёмное сверху, светлое у горизонта
+      const cloud = Math.sin(x * 0.2 + y * 0.5) + Math.sin(x * 0.07 - y * 0.3);
+      if (cloud > 1.3 && t < 0.7) c = mix(c, [110, 104, 80], 0.5);
+    } else {
+      c = mix([54, 50, 30], [24, 22, 16], (y - hy) / (H - hy)); // холмы и луг
+    }
+    // дерево: ствол и крона
+    const dx = x - treeX;
+    if (Math.abs(dx) <= 1 && y > hy - 14 && y < hy + 2) c = [20, 16, 12];
+    if (dx * dx + (y - (hy - 18)) ** 2 * 1.4 < 60) c = mix([26, 30, 20], [44, 48, 30], rnd());
+    c = c.map((v) => v * (1 + stroke));
+    // лак: тёплый налёт и тёмные края
+    const edge = Math.min(x, y, W - 1 - x, H - 1 - y);
+    const k = edge < 4 ? 0.6 + edge * 0.1 : 1;
+    return mix(c, [120, 90, 40], 0.12).map((v) => v * k);
+  }, seed + 70, W, H);
 }
