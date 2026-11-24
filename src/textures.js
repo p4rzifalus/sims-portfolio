@@ -503,3 +503,34 @@ export function leather(hex = '#2f4a32') {
     return shade(base, k);
   }, 66, 64, 32);
 }
+
+// Картина маслом (этап 14): тёмный пейзаж — грозовое небо, холмы, одинокое дерево,
+// мазки и пожелтевший лак. Нарисована кодом, не копия чьей-то картины.
+export function oilPainting(seed = 1, W = 48, H = 60) {
+  const mix = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
+  const rnd0 = random(seed * 31 + 7);
+  const hill = (x) => H * 0.62 + Math.sin(x * 0.13 + rnd0() * 0) * 4 + Math.sin(x * 0.05 + seed) * 5;
+  const treeX = Math.round(W * (0.3 + rnd0() * 0.4));
+  return makeTexture((x, y, rnd) => {
+    const stroke = Math.sin(x * 0.9 + y * 0.35) * 0.06 + (rnd() - 0.5) * 0.1; // мазки
+    let c;
+    const hy = hill(x);
+    if (y < hy) {
+      const t = y / hy;
+      c = mix([38, 44, 40], [150, 128, 84], Math.pow(t, 1.6)); // небо: тёмное сверху, светлое у горизонта
+      const cloud = Math.sin(x * 0.2 + y * 0.5) + Math.sin(x * 0.07 - y * 0.3);
+      if (cloud > 1.3 && t < 0.7) c = mix(c, [110, 104, 80], 0.5);
+    } else {
+      c = mix([54, 50, 30], [24, 22, 16], (y - hy) / (H - hy)); // холмы и луг
+    }
+    // дерево: ствол и крона
+    const dx = x - treeX;
+    if (Math.abs(dx) <= 1 && y > hy - 14 && y < hy + 2) c = [20, 16, 12];
+    if (dx * dx + (y - (hy - 18)) ** 2 * 1.4 < 60) c = mix([26, 30, 20], [44, 48, 30], rnd());
+    c = c.map((v) => v * (1 + stroke));
+    // лак: тёплый налёт и тёмные края
+    const edge = Math.min(x, y, W - 1 - x, H - 1 - y);
+    const k = edge < 4 ? 0.6 + edge * 0.1 : 1;
+    return mix(c, [120, 90, 40], 0.12).map((v) => v * k);
+  }, seed + 70, W, H);
+}

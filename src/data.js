@@ -437,7 +437,7 @@ export const furniture = [
   // --- у задней стены слева: торшер и книжный шкаф ---
   {
     id: 'lamp',
-    type: 'floorLamp',
+    type: 'mansionFloorLamp', // латунь и абажур с бахромой; прежний — 'floorLamp'
     cells: [[0, 0]],
     blocks: true,
     lightColor: '#ffb35c', // тёплый свет торшера
@@ -496,13 +496,53 @@ export const furniture = [
   },
   {
     id: 'plant',
-    type: 'plant',
+    type: 'mansionPlant', // пальма в латунной кадке; прежнее растение — 'plant'
     cells: [[0, 1]], // у дивана, со стороны торшера
     blocks: true,
   },
   {
+    id: 'painting',
+    type: 'painting', // картина маслом в золочёной раме (нарисована кодом)
+    wall: 'west',
+    cells: [[0, 1]], // над пальмой
+    blocks: false,
+    height: 1.7, // центр картины по высоте
+    size: [0.5, 0.62],
+    seed: 3, // другой номер — другой пейзаж
+  },
+  // бра по бокам от плаката
+  {
+    id: 'sconce-1',
+    type: 'sconce',
+    wall: 'west',
+    cells: [[0, 2]],
+    shift: -0.27, // вдоль стены от центра клетки
+    blocks: false,
+    height: 1.75,
+    lightColor: '#ffbf70',
+    lightIntensity: 1.6,
+    lightDistance: 3,
+    lightDecay: 1.5,
+    halo: 0.35,
+  },
+  {
+    id: 'sconce-2',
+    type: 'sconce',
+    wall: 'west',
+    cells: [[0, 3]],
+    shift: 0.27,
+    blocks: false,
+    height: 1.75,
+    lightColor: '#ffbf70',
+    lightIntensity: 1.6,
+    lightDistance: 3,
+    lightDecay: 1.5,
+    halo: 0.35,
+  },
+  {
     id: 'poster',
     type: 'poster',
+    frame: 'gold', // золочёная рама, как у картины; без строки — тонкая чёрная
     selfLit: '#d9cfbe', // светится сам (не зависит от ламп), цвет — насколько ярко и тепло; без строки — как вся комната
     wall: 'west',
     cells: [[0, 2], [0, 3]], // висит над диваном

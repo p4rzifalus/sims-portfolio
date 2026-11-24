@@ -68,6 +68,26 @@ function halo(color, size) {
   return s;
 }
 
+// Золочёная рама картины (этап 14): широкий багет и тёмный кант внутри; под рамой тёмная
+// подложка без дрожания — рама дрожит, а картина нет, в щели видна подложка, а не обои.
+function goldFrame(m, W, H, y, f) {
+  const g = new THREE.Group();
+  const backing = new THREE.Mesh(new THREE.PlaneGeometry(W + f * 2, H + f * 2), lambert({ color: '#1e1610' }));
+  backing.position.set(0, y, 0.02);
+  backing.userData.noSnap = true;
+  g.add(backing);
+  g.add(box(W + f * 2, f, 0.05, m.gold, 0, y + H / 2, 0.025));
+  g.add(box(W + f * 2, f, 0.05, m.gold, 0, y - H / 2 - f, 0.025));
+  g.add(box(f, H, 0.05, m.gold, -W / 2 - f / 2, y - H / 2, 0.025));
+  g.add(box(f, H, 0.05, m.gold, W / 2 + f / 2, y - H / 2, 0.025));
+  const lip = 0.012; // тёмный кант по внутреннему краю
+  g.add(box(W, lip, 0.035, m.goldDark, 0, y + H / 2 - lip, 0.03));
+  g.add(box(W, lip, 0.035, m.goldDark, 0, y - H / 2, 0.03));
+  g.add(box(lip, H, 0.035, m.goldDark, -W / 2 + lip / 2, y - H / 2, 0.03));
+  g.add(box(lip, H, 0.035, m.goldDark, W / 2 - lip / 2, y - H / 2, 0.03));
+  return g;
+}
+
 // Свет лампы с ореолом; ореол мерцает вместе со светом (main.js, lighting.flicker).
 function lampLight(lights, color, intensity, distance, decay, x, y, z, haloSize) {
   const light = new THREE.PointLight(color, intensity, distance, decay);
@@ -377,6 +397,81 @@ const builders = {
     return g;
   },
 
+  mansionFloorLamp(_, m, item, lights) {
+    // Торшер особняка: латунная стойка с утолщениями, абажур из ткани с бахромой.
+    const g = new THREE.Group();
+    const o = -0.15; // сдвиг в угол клетки
+    g.add(cylinder(0.16, 0.2, 0.05, m.gold, o, 0, o, 8));
+    g.add(cylinder(0.05, 0.08, 0.08, m.gold, o, 0.05, o, 6));
+    g.add(cylinder(0.018, 0.018, 1.3, m.gold, o, 0.1, o, 6));
+    for (const y of [0.55, 1.05]) g.add(cylinder(0.035, 0.035, 0.05, m.gold, o, y, o, 6));
+    g.add(cylinder(0.13, 0.25, 0.3, m.fabricShade, o, 1.36, o, 10));
+    g.add(cylinder(0.255, 0.255, 0.06, m.fringe, o, 1.3, o, 10)); // бахрома
+    const light = lampLight(lights, item.lightColor || '#ffc477', item.lightIntensity ?? 2.2,
+      item.lightDistance ?? 4.5, item.lightDecay ?? 1, o, 1.4, o, item.halo);
+    g.add(light);
+    if (light.userData.halo) g.add(light.userData.halo);
+    return g;
+  },
+
+  mansionPlant(_, m) {
+    // Пальма в латунной кадке на низкой подставке: длинные дуговые листья.
+    const g = new THREE.Group();
+    g.add(cylinder(0.2, 0.2, 0.06, m.mahogany, 0, 0, 0, 8)); // подставка
+    g.add(cylinder(0.2, 0.15, 0.36, m.gold, 0, 0.06, 0, 8));
+    g.add(cylinder(0.21, 0.21, 0.03, m.gold, 0, 0.4, 0, 8));
+    g.add(cylinder(0.18, 0.18, 0.02, m.soil, 0, 0.41, 0, 8));
+    const rnd = tex.random(21);
+    for (let i = 0; i < 8; i++) {
+      const a = i * 2.4 + rnd() * 0.4;
+      const len = 0.55 + rnd() * 0.35;
+      const tilt = 0.35 + rnd() * 0.45;
+      // лист из трёх отрезков, всё круче вниз — дуга
+      let x = 0, y = 0.42, z = 0;
+      for (let k = 0; k < 3; k++) {
+        const pitch = tilt + k * 0.45;
+        const seg = len / 3;
+        const dx = Math.cos(a) * Math.sin(pitch) * seg, dz = Math.sin(a) * Math.sin(pitch) * seg;
+        const dy = Math.cos(pitch) * seg;
+        const leaf = box(0.16 - k * 0.04, 0.015, seg, m.leafDark, 0, 0, 0);
+        leaf.position.set(x + dx / 2, y + dy / 2, z + dz / 2);
+        leaf.lookAt(leaf.position.x + dx, leaf.position.y + dy, leaf.position.z + dz);
+        g.add(steady(leaf));
+        x += dx; y += dy; z += dz;
+      }
+    }
+    return g;
+  },
+
+  sconce(_, m, item, lights) {
+    // Бра (этап 14): латунная пластина на стене, изогнутая рука, маленький абажур-тюльпан.
+    // Стена — плоскость z = 0, комната — в сторону +Z.
+    const g = new THREE.Group();
+    const y = item.height || 1.75;
+    g.add(steady(box(0.1, 0.18, 0.02, m.gold, 0, y - 0.12, 0.01)));
+    const arm = box(0.02, 0.02, 0.16, m.gold, 0, y - 0.04, 0.09);
+    g.add(arm);
+    g.add(box(0.02, 0.1, 0.02, m.gold, 0, y - 0.05, 0.17));
+    g.add(cylinder(0.08, 0.04, 0.12, m.fabricShade, 0, y + 0.03, 0.17, 8));
+    const light = lampLight(lights, item.lightColor || '#ffc477', item.lightIntensity ?? 1.5,
+      item.lightDistance ?? 3, item.lightDecay ?? 1.5, 0, y + 0.06, 0.2, item.halo);
+    g.add(light);
+    if (light.userData.halo) g.add(light.userData.halo);
+    return g;
+  },
+
+  painting(_, m, item) {
+    // Картина маслом в золочёной раме. Картина нарисована кодом (tex.oilPainting).
+    const g = new THREE.Group();
+    const W = item.size?.[0] || 0.5, H = item.size?.[1] || 0.62, y = item.height || 1.6;
+    const canvas = new THREE.Mesh(new THREE.PlaneGeometry(W, H), lambert({ map: tex.oilPainting(item.seed || 1) }));
+    canvas.position.set(0, y, 0.03);
+    canvas.userData.noSnap = true;
+    g.add(canvas);
+    g.add(goldFrame(m, W, H, y, 0.06));
+    return g;
+  },
+
   sideLamp(_, m, item, lights) {
     // Круглый столик на одной ножке и настольная лампа с абажуром (этап 14).
     // Невысокий (~1 ед.), чтобы в переднем углу не загораживать персонажей.
@@ -680,6 +775,10 @@ const builders = {
     paper.position.set(0, y, 0.025);
     paper.userData.noSnap = true;
     g.add(paper);
+    if (item.frame === 'gold') {
+      g.add(goldFrame(m, W, H, y, 0.07)); // особняк: плакат как картина в золочёной раме
+      return g;
+    }
     const f = 0.03;
     // Тёмная подложка под рамкой: рамка дрожит, а бумага нет — в щели видна подложка, а не обои.
     const backing = new THREE.Mesh(new THREE.PlaneGeometry(W + f * 2, H + f * 2), lambert({ color: '#26252b' })); // свой материал: дрожание включается на материал
@@ -761,6 +860,10 @@ export function buildRoom(room, furniture, baked = null) {
     bookRows: [1, 2, 3, 4, 5].map((seed) => lambert({ map: tex.bookSpines(seed) })),
     greenShade: lambert({ color: '#2f6a3c', emissive: '#3c8a4a', emissiveIntensity: 0.6 }),
     velvetSeat: lambert({ map: tex.velvet('#6a1f24') }),
+    goldDark: lambert({ color: '#5e4520' }),
+    fabricShade: lambert({ color: '#e8c89a', emissive: '#ffa850', emissiveIntensity: 0.6 }),
+    fringe: lambert({ color: '#c9a050', emissive: '#a06a20', emissiveIntensity: 0.4 }),
+    leafDark: lambert({ color: '#3f6a3a' }),
     gold: lambert({ color: '#b08a3e' }),
     silver: lambert({ color: '#c6cad1' }),
     silverDark: lambert({ color: '#a9adb5' }),
@@ -896,11 +999,13 @@ export function buildRoom(room, furniture, baked = null) {
       // Ширина — сколько клеток вдоль стены занимает предмет (у панорамного окна — несколько).
       const w = item.wall === 'west' ? fp.sizeZ : fp.sizeX;
       obj = build({ w, d: 1 }, itemMats, item, lights);
+      // shift — сдвиг вдоль стены от центра клеток (плюс — к зрителю на левой стене, вправо на задней)
+      const shift = item.shift || 0;
       if (item.wall === 'west') {
-        obj.position.set(0, 0, fp.z);
+        obj.position.set(0, 0, fp.z + shift);
         obj.rotation.y = FACING_ANGLE.east;
       } else {
-        obj.position.set(fp.x, 0, 0);
+        obj.position.set(fp.x + shift, 0, 0);
       }
     } else {
       const angle = FACING_ANGLE[item.facing || 'south'];
