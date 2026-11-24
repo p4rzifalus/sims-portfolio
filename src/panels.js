@@ -27,7 +27,7 @@ export function createPanels(root, { panels: panelTexts, ui: texts, getPortrait 
     works(ch, body) {
       const grid = el('div', 'works-grid');
       ch.works.forEach((w, i) => {
-        const card = w.url ? link(w.url, 'work-card') : el('div', 'work-card');
+        const card = w.url ? link(w.url, 'work-card skin-well') : el('div', 'work-card skin-well');
         const thumb = el('div', 'work-thumb');
         if (w.image) {
           const img = el('img');
@@ -47,7 +47,7 @@ export function createPanels(root, { panels: panelTexts, ui: texts, getPortrait 
     links(ch, body) {
       const list = el('div', 'links-list');
       for (const l of ch.links) {
-        const a = link(l.url, 'link-pill');
+        const a = link(l.url, 'link-pill pill');
         a.textContent = l.label;
         list.appendChild(a);
       }
@@ -57,7 +57,7 @@ export function createPanels(root, { panels: panelTexts, ui: texts, getPortrait 
     shelf(_, body) {
       const list = el('div', 'links-list');
       for (const l of panelTexts.shelf?.links || []) {
-        const a = link(l.url, 'link-pill link-row');
+        const a = link(l.url, 'link-pill pill link-row');
         a.appendChild(el('span', 'link-label', l.label));
         if (l.note) a.appendChild(el('span', 'link-note', l.note));
         list.appendChild(a);
@@ -98,17 +98,17 @@ export function createPanels(root, { panels: panelTexts, ui: texts, getPortrait 
     // её closed выполнится со значением 'replaced'.
     open(kind, ch) {
       closeCurrent('replaced');
-      const node = el('div', 'panel');
+      const node = el('div', 'panel skin-frame');
       node.style.setProperty('--accent', ch.color);
       const head = el('div', 'panel-head');
       const title = panelTexts[kind]?.title || kind;
       head.appendChild(el('div', 'panel-title', panelTexts[kind]?.shared ? title : typo(`${title} — ${ch.name}`)));
-      const x = el('button', 'panel-x', '✕');
+      const x = el('button', 'panel-x skin-close', '✕');
       x.type = 'button';
       x.title = texts.close;
       head.appendChild(x);
       node.appendChild(head);
-      const body = el('div', 'panel-body');
+      const body = el('div', 'panel-body skin-scroll');
       (builders[kind] || (() => {}))(ch, body);
       node.appendChild(body);
       const foot = el('div', 'panel-foot');

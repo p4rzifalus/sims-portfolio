@@ -1,40 +1,9 @@
-/* ---------- Стиль «хром»: засвеченный серебристый с розовыми отливами + голубые детали двух тонов ----------
-   Все цвета интерфейса — здесь. Хром — корпус панелей; синий «а» — яркие глянцевые кнопки;
-   синий «б» — светлый, утопленные «экранчики» (часы, шкалы, рамки с текстом). */
-:root {
-  /* хром */
-  --chrome:
-    /* крупный белый засвет сверху: яркое пятно-эллипс, мягко гаснет к середине рамки */
-    radial-gradient(70% 46% at 42% 0%, #ffffff 0%, rgba(255, 255, 255, 0.97) 38%, rgba(255, 255, 255, 0.55) 70%, rgba(255, 255, 255, 0) 100%),
-    radial-gradient(120% 60% at 15% 0%, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0) 60%),
-    radial-gradient(80% 70% at 100% 100%, rgba(244, 170, 210, 0.55), rgba(244, 170, 210, 0) 70%),
-    linear-gradient(165deg, #ffffff 0%, #eef0fa 14%, #f7d6e8 30%, #e3e6f4 46%, #f3cfe3 62%, #d3d7ec 78%, #b9bedb 100%);
-  --chrome-soft: linear-gradient(180deg, #ffffff 0%, #f1f2fb 38%, #f5d5e7 70%, #d4d8ee 100%);
-  --chrome-band: linear-gradient(180deg, #f7f7fd 0%, #ebcfe0 50%, #bfc4de 100%); /* перемычки и выпуклые полосы */
-  --chrome-edge: #9a9fc4; /* обводка корпуса */
-  --chrome-rim: #ffffff; /* светлый кант внутри обводки */
-  --chrome-ink: #2c3068; /* текст на хроме */
-  --chrome-shadow: 0 4px 10px rgba(40, 30, 90, 0.35), inset 0 2px 0 #fff, inset 0 -3px 4px rgba(170, 120, 170, 0.28);
-  /* синий «а»: яркий глянец */
-  --blue-a: linear-gradient(180deg, #eef1ff 0%, #a9b9ff 28%, #5a75f0 58%, #3550d2 78%, #7a95ff 100%);
-  --blue-a-hover: linear-gradient(180deg, #ffffff 0%, #c0ceff 28%, #7189ff 58%, #4762e6 78%, #94acff 100%);
-  --blue-a-edge: #2d3fa6;
-  --blue-a-orb: radial-gradient(circle at 36% 28%, #ffffff 0 9%, #c3cfff 22%, #5f7af2 58%, #3046c4 84%, #7b96ff 100%);
-  /* синий «б»: светлый, утопленный экранчик */
-  --blue-b: linear-gradient(180deg, #7f8de6 0%, #a5b2f7 42%, #cad3ff 100%);
-  --blue-b-raised: linear-gradient(180deg, #e9edff 0%, #bcc8ff 50%, #95a6f4 100%);
-  --blue-b-edge: #5d69bf;
-  --blue-b-ink: #1b2272;
-  --blue-b-inset: inset 0 3px 5px rgba(20, 25, 110, 0.38), inset 0 -1px 0 rgba(255, 255, 255, 0.6);
-  --ui-text: var(--chrome-ink);
-}
-
 html,
 body {
   margin: 0;
   height: 100%;
   overflow: hidden;
-  background: #2a2438;
+  background: #0e0c0b;
   /* Inter: только полужирный (600, обычный текст) и жирный (700, заголовки и кнопки),
      буквы сдвинуты плотнее на 6% */
   font-family: 'Inter', system-ui, sans-serif;
@@ -50,10 +19,9 @@ textarea {
   letter-spacing: inherit;
 }
 
-/* ---------- Заголовки: пиксельный шрифт 5by7 ----------
+/* ---------- Пиксельный шрифт 5by7 (цифры часов) ----------
    Буква нарисована на сетке, где пиксель = 0,1 размера шрифта, поэтому размер — 10 или 20 px:
-   тогда каждый пиксель буквы попадает ровно в пиксели экрана и края остаются чёткими.
-   Расстояние между буквами — родное (один пиксель), иначе буквы слипаются. */
+   тогда каждый пиксель буквы попадает ровно в пиксели экрана и края остаются чёткими. */
 @font-face {
   font-family: '5by7';
   src: url('../fonts/5by7.ttf') format('truetype');
@@ -66,40 +34,197 @@ textarea {
   font-weight: 700;
   font-display: swap;
 }
-.hud-title,
-.hud-name,
-.panel-title,
-.notice-title,
-.hud-tip-title {
-  --title-ink: var(--chrome-ink);
-  font-family: '5by7', monospace;
-  font-weight: 700;
-  letter-spacing: 0;
-  line-height: 1.1;
+/* ---------- Стиль «готика особняка + кости» (этап 20) ----------
+   Картинки и их размеры — переменные --ui-* из src/ui/kit.css (собирает tools/ui/slice.mjs
+   из листов gpt-image). Цвета нового стиля — переменные --g-*. Новые элементы собирать из
+   классов ниже: .skin-frame (рамка), .skin-well (утопленный экранчик), .skin-bar (шкала),
+   .skin-round / .skin-close (круглые кнопки), .skin-title (заголовок антиквой).
+   С шага 20.5 весь интерфейс на этих классах, прежнего «хрома» в стилях нет. */
+:root {
+  --g-ink: #dccab0; /* основной текст на дереве */
+  --g-ink-dim: #a08a6c; /* подписи, второстепенное */
+  --g-title: #ecdcbc; /* заголовки антиквой */
+  --g-ember: #f0c88a; /* тлеющие цифры (часы) */
+  --g-ember-glow: rgba(255, 140, 40, 0.6);
+  --g-shadow: 0 6px 14px rgba(0, 0, 0, 0.55);
 }
-.hud-title,
-.hud-name,
+
+/* Заголовок антиквой: без пиксельного блика 5by7, светлая кость с тенью */
+.skin-title,
+.hud .hud-title,
+.hud .hud-name,
+#ui .hud-tip-title,
 .panel-title,
 .notice-title {
-  font-size: 20px;
+  font-family: 'Old Standard TT', serif;
+  font-weight: 700;
+  font-size: 22px;
+  letter-spacing: 0;
+  line-height: 1.1;
+  color: var(--g-title);
+  background: none;
+  -webkit-background-clip: border-box;
+  background-clip: border-box;
+  filter: none;
+  text-shadow: 0 2px 2px rgba(0, 0, 0, 0.85);
 }
-/* Блик с плашки заходит на буквы: верх букв высветлен, как будто на них тоже падает свет.
-   Градиент повторяется на каждой строке (1lh), поэтому и у переноса блик сверху.
-   Тень — через filter: у текста с градиентом обычная text-shadow просвечивала бы сквозь буквы. */
-.hud-title,
-.hud-name,
-.panel-title,
-.notice-title,
-.hud-tip-title {
-  background: linear-gradient(180deg,
-      color-mix(in srgb, var(--title-ink) 35%, #fff) 0%,
-      color-mix(in srgb, var(--title-ink) 55%, #fff) 30%,
-      var(--title-ink) 52%,
-      var(--title-ink) 100%) 0 0 / 100% 1lh repeat-y;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.9));
+
+/* Рамка из 9 кусков. Дерево (или бархат) — фоном элемента внутри прозрачной кромки
+   (--inset): так оно не вылезает за скошенные углы рамки. Сама рамка — на ::after поверх
+   (border-image), клики сквозь неё проходят. --k — толщина рамки (1 — как нарисована).
+   ::before свободен (у блоков нижней панели на нём скоба-перемычка).
+   Позиционирование (relative / fixed / absolute) задаёт сам элемент. */
+.skin-frame {
+  --skin: var(--ui-frame);
+  --slice: var(--ui-frame-slice);
+  --bwt: var(--ui-frame-wt);
+  --bwr: var(--ui-frame-wr);
+  --bwb: var(--ui-frame-wb);
+  --bwl: var(--ui-frame-wl);
+  --fill: var(--ui-wood);
+  --inset: 12px;
+  --k: 1;
+  box-sizing: border-box;
+  border: var(--inset) solid transparent;
+  background: var(--fill) 0 0 / var(--ui-wood-size) padding-box;
+  box-shadow: none;
+  border-radius: 0;
+  filter: drop-shadow(var(--g-shadow));
+}
+.skin-frame.velvet {
+  --skin: var(--ui-frame-velvet);
+  --fill: var(--ui-velvet);
+}
+.skin-frame.small {
+  --skin: var(--ui-frame-small);
+  --slice: var(--ui-frame-small-slice);
+  --bwt: var(--ui-frame-small-wt);
+  --bwr: var(--ui-frame-small-wr);
+  --bwb: var(--ui-frame-small-wb);
+  --bwl: var(--ui-frame-small-wl);
+  --inset: 6px;
+}
+.skin-frame::after {
+  content: '';
+  position: absolute;
+  inset: calc(-1 * var(--inset));
+  box-sizing: border-box;
+  pointer-events: none;
+  border-style: solid;
+  /* толщина краёв × --k прямо в border-width (а не множителем border-image-width):
+     иначе у низкой рамки рисунок не может быть ниже двух полных толщин и вылезает вниз */
+  border-width: calc(var(--k) * var(--bwt)) calc(var(--k) * var(--bwr)) calc(var(--k) * var(--bwb))
+    calc(var(--k) * var(--bwl));
+  border-image-source: var(--skin);
+  border-image-slice: var(--slice);
+}
+
+/* Утопленный тёмный экранчик (часы, строки работ, «пара слов») */
+.skin-well {
+  --k: 1;
+  box-sizing: border-box;
+  border-style: solid;
+  border-width: calc(var(--k) * var(--ui-well-wt)) calc(var(--k) * var(--ui-well-wr))
+    calc(var(--k) * var(--ui-well-wb)) calc(var(--k) * var(--ui-well-wl));
+  border-image: var(--ui-well) var(--ui-well-slice) fill;
+  background: none;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+/* Шкала: желобок — картинка, заливка (.skin-bar-fill) — цветом по заполненности.
+   Заливка лежит в канавке желобка: от края картинки до канавки 11 px (при --k 1), у торцов —
+   железные набалдашники. Доля заполнения — переменная --p (0…1) у заливки. */
+.skin-bar {
+  --k: 1;
+  position: relative;
+  box-sizing: border-box;
+  height: calc(22.5px * var(--k));
+  border-style: solid;
+  border-width: 0 calc(var(--k) * var(--ui-bar-wr)) 0 calc(var(--k) * var(--ui-bar-wl));
+  border-image: var(--ui-bar) var(--ui-bar-slice) fill;
+  background: none;
+  box-shadow: none;
+  border-radius: 0;
+  overflow: visible;
+}
+.skin-bar-fill {
+  --edge: calc(var(--k) * (var(--ui-bar-wl) - 11px)); /* от канавки до внутреннего края рамки */
+  position: absolute;
+  left: calc(-1 * var(--edge));
+  top: calc(6px * var(--k));
+  bottom: calc(6px * var(--k));
+  width: calc((100% + 2 * var(--edge)) * var(--p, 0));
+  border-radius: 6px;
+  box-shadow: inset 0 2px 1px rgba(255, 255, 255, 0.3), inset 0 -2px 2px rgba(0, 0, 0, 0.4), 0 0 6px var(--glow, transparent);
+}
+
+/* Круглые кнопки: деревянный диск в железе (.skin-round) и железный с черепком (.skin-close).
+   Наведение и нажатие — свет поверх той же картинки (gpt-image рисует каждое состояние
+   заново, чуть другой формы, — при подмене картинки кнопка дёргалась). */
+.skin-round,
+.skin-close {
+  position: relative;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--ui-round) center / 100% 100% no-repeat;
+  box-shadow: none;
+  color: inherit;
+  cursor: pointer;
+  transition: filter 0.12s ease-out;
+}
+.skin-close {
+  background-image: var(--ui-close);
+  font-size: 0; /* значок — сам черепок, текст «✕» только для экранного диктора */
+}
+.skin-round::after,
+.skin-close::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0;
+  mix-blend-mode: screen;
+  background: radial-gradient(45% 40% at 50% 78%, rgba(255, 140, 50, 0.6), rgba(255, 90, 20, 0.2) 60%, transparent);
+  transition: opacity 0.12s ease-out;
+}
+.skin-round:hover:not(:disabled),
+.skin-close:hover:not(:disabled) {
+  filter: brightness(1.15) drop-shadow(0 0 5px rgba(255, 110, 30, 0.55));
+}
+.skin-round:hover:not(:disabled)::after,
+.skin-close:hover:not(:disabled)::after {
+  opacity: 1;
+}
+.skin-round:active:not(:disabled),
+.skin-close:active:not(:disabled) {
+  filter: brightness(0.85) drop-shadow(0 0 2px rgba(255, 110, 30, 0.4));
+}
+.skin-round:active:not(:disabled)::after,
+.skin-close:active:not(:disabled)::after {
+  opacity: 0.5;
+}
+
+/* Полоса прокрутки: железный желобок и костяной бегунок (Chrome, Safari);
+   в Firefox таких картинок нет — там просто тёмные цвета. */
+.skin-scroll::-webkit-scrollbar {
+  width: 12px;
+}
+.skin-scroll::-webkit-scrollbar-track {
+  border-style: solid;
+  border-width: 10px 0;
+  border-image: var(--ui-scroll-track) var(--ui-scroll-track-slice) fill / 10px 0 stretch;
+}
+.skin-scroll::-webkit-scrollbar-thumb {
+  background: var(--ui-scroll-thumb) center / 9px 100% no-repeat;
+}
+@supports not selector(::-webkit-scrollbar) {
+  .skin-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: #c9b48f #1c130e;
+  }
 }
 
 #app,
@@ -112,41 +237,86 @@ textarea {
   touch-action: none; /* на телефоне касание — это клик, а не прокрутка или масштаб */
 }
 
-/* ---------- Кнопки-«таблетки» ---------- */
+/* ---------- Кнопки-«таблетки» ----------
+   Деревянная плашка в железе (картинка pill). --k — размер (1 — как нарисована, 43 px в высоту).
+   Текст — по деревянной середине: она выше и правее центра картинки, а строчные буквы
+   визуально ниже середины строки, поэтому снизу и слева отступ чуть больше.
+   Наведение и нажатие — свет поверх той же картинки (у состояний из gpt-image чуть другая
+   форма, при подмене кнопка дёргалась). Отдельные картинки — у неактивной (pill-disabled),
+   выключенной (.off → pill-off) и включённой (pill-on). */
 .pill {
+  --k: 0.8;
+  --skin: var(--ui-pill);
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  box-sizing: border-box;
+  height: calc(43px * var(--k));
+  min-width: calc(110px * var(--k));
+  /* текст вверх на 0,75 px × k (середина дерева выше центра картинки) + 0,12 em (строчные
+     буквы ниже середины строки) — снизу отступ вдвое больше; вправо на 1 px × k */
+  padding: 0 2px calc(1.5px * var(--k) + 0.24em) calc(2px + 2px * var(--k));
+  border-style: solid;
+  border-width: calc(var(--k) * var(--ui-pill-wt)) calc(var(--k) * var(--ui-pill-wr))
+    calc(var(--k) * var(--ui-pill-wb)) calc(var(--k) * var(--ui-pill-wl));
+  border-image: var(--skin) var(--ui-pill-slice) fill;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
   font: inherit;
   font-size: 14px;
-  font-weight: bold;
-  color: #fff;
-  padding: 6px 16px;
-  border-radius: 999px;
-  border: 2px solid var(--blue-a-edge);
-  background: var(--blue-a);
-  box-shadow: 0 3px 6px rgba(30, 30, 100, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.8);
-  text-shadow: 0 1px 1px rgba(20, 30, 120, 0.7);
+  line-height: 1;
+  white-space: nowrap;
+  text-decoration: none;
+  color: var(--g-ink);
+  text-shadow: 0 1px 2px #000;
   cursor: pointer;
+  transition: filter 0.12s ease-out;
 }
-.pill:hover {
-  background: var(--blue-a-hover);
+.pill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  mix-blend-mode: screen;
+  background: radial-gradient(34% 34% at 50% 78%, rgba(255, 140, 50, 0.7), rgba(255, 90, 20, 0.22) 55%, transparent);
+  transition: opacity 0.12s ease-out;
 }
-.pill:active {
-  transform: translateY(1px);
+.pill:hover:not(:disabled, .disabled) {
+  color: #fff3dc;
+  filter: brightness(1.15) drop-shadow(0 0 5px rgba(255, 110, 30, 0.55));
+}
+.pill:hover:not(:disabled, .disabled)::after {
+  opacity: 1;
+}
+.pill:active:not(:disabled, .disabled) {
+  filter: brightness(0.85) drop-shadow(0 0 2px rgba(255, 110, 30, 0.4));
+}
+.pill:active:not(:disabled, .disabled)::after {
+  opacity: 0.5;
+}
+.pill:disabled,
+.pill.disabled {
+  --skin: var(--ui-pill-disabled);
+  color: #8d8a86;
+  cursor: not-allowed;
 }
 .pill.off {
-  color: var(--chrome-ink);
-  text-shadow: 0 1px 0 #fff;
-  background: var(--chrome-soft);
-  border-color: var(--chrome-edge);
+  --skin: var(--ui-pill-off);
+  color: var(--g-ink-dim);
+}
+/* «PS1: вкл» и включённая сетка — плашка с тлеющим кантом */
+#ps1-toggle:not(.off),
+.pill.small.active {
+  --skin: var(--ui-pill-on);
+  color: #fff3dc;
 }
 .pill.small {
+  --k: 0.66;
   font-size: 12px;
-  padding: 4px 12px;
-  opacity: 0.8;
-}
-.pill.small.active {
-  opacity: 1;
-  border-color: #fff;
-  box-shadow: 0 0 0 2px var(--blue-a-edge), 0 0 8px 2px #9fb4ff;
 }
 
 #corner {
@@ -160,59 +330,83 @@ textarea {
   z-index: 10;
 }
 
-/* ---------- Радио (правый верхний угол) ---------- */
+/* ---------- Радио (правый верхний угол) ----------
+   Выключено (.idle) — одна «таблетка» «▶ радио». Играет — маленькая деревянная рамка
+   (.skin-frame.small): круглая кнопка «пауза/играть», тёмный экранчик с названием,
+   кнопка «следующая», громкость. Значки — костяные картинки. */
 .radio {
   --vol: 60%;
+  --k: 0.55;
+  position: relative;
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 3px 10px 3px 3px;
-  border-radius: 999px;
-  border: 2px solid var(--chrome-edge);
-  background: var(--chrome);
-  box-shadow: var(--chrome-shadow);
-  color: var(--chrome-ink);
-  text-shadow: 0 1px 0 #fff;
+  padding: 2px 8px 2px 2px;
+  color: var(--g-ink);
+}
+.radio.idle {
+  padding: 0;
+  border-width: 0; /* рамки нет — только «таблетка» */
+  background: none;
+  filter: none;
+}
+.radio.idle::after {
+  display: none;
 }
 .radio button {
   font: inherit;
   color: inherit;
   cursor: pointer;
 }
-.radio-play {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  height: 34px;
-  min-width: 34px;
-  padding: 0 0 0 11px;
-  border-radius: 999px;
-  border: 2px solid var(--blue-a-edge);
-  background: var(--blue-a);
-  box-shadow: 0 2px 4px rgba(30, 30, 100, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.8);
-  color: #fff;
-  text-shadow: 0 1px 1px rgba(20, 30, 120, 0.7);
+.radio-play,
+.radio-next {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--ui-round) center / 100% 100% no-repeat;
+  transition: filter 0.12s ease-out;
 }
-.radio:not(.idle) .radio-play {
-  background: var(--blue-a-orb);
+.radio-play {
+  width: 38px;
+  height: 38px;
+}
+.radio-next {
+  width: 30px;
+  height: 30px;
 }
 .radio-play:hover,
 .radio-next:hover {
-  filter: brightness(1.12);
+  filter: brightness(1.15) drop-shadow(0 0 5px rgba(255, 110, 30, 0.55));
 }
 .radio-play:active,
 .radio-next:active {
-  transform: translateY(1px);
+  filter: brightness(0.85);
 }
-.radio.idle {
-  padding-right: 3px;
-}
+/* выключено: та же «таблетка», что у кнопок в углу */
 .radio.idle .radio-play {
-  padding-right: 14px;
+  --k: 0.8;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: auto;
+  height: calc(43px * var(--k));
+  padding: 0 2px calc(1.5px * var(--k) + 0.24em) calc(2px + 2px * var(--k));
+  box-sizing: border-box;
+  border-radius: 0;
+  border-style: solid;
+  border-width: calc(var(--k) * var(--ui-pill-wt)) calc(var(--k) * var(--ui-pill-wr))
+    calc(var(--k) * var(--ui-pill-wb)) calc(var(--k) * var(--ui-pill-wl));
+  border-image: var(--ui-pill) var(--ui-pill-slice) fill;
+  background: none;
+  text-shadow: 0 1px 2px #000;
 }
 .radio-label {
   font-size: 14px;
-  font-weight: bold;
+  line-height: 1;
 }
 .radio:not(.idle) .radio-label,
 .radio.idle .radio-info,
@@ -220,87 +414,42 @@ textarea {
 .radio.idle .radio-volume {
   display: none;
 }
-.radio:not(.idle) .radio-play {
-  width: 34px;
-  padding: 0;
-  justify-content: center;
-}
-.radio:not(.idle) .radio-play .radio-icon {
-  margin-left: 0;
-}
 
-/* Значки из рамок: треугольник «играть», две полоски «пауза», «следующая». */
+/* Костяные значки «играть», «пауза», «следующая» */
 .radio-icon {
   display: block;
   flex: none;
-  position: relative;
+  width: 15px;
+  height: 15px;
+  background: center / contain no-repeat;
 }
 .radio-icon.play {
-  width: 0;
-  height: 0;
-  margin-left: 2px;
-  border-style: solid;
-  border-width: 7px 0 7px 11px;
-  border-color: transparent transparent transparent #fff;
-  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.4));
+  background-image: var(--ui-icon-play);
+  translate: 1px 0;
 }
-.radio:not(.idle) .radio-icon.play {
-  transform: translateX(2px);
+/* в «таблетке» текст поднят ради строчных букв (0,12 em) — картинке-значку это не нужно */
+.radio.idle .radio-icon.play {
+  translate: 1px 0.12em;
 }
 .radio-icon.pause {
-  width: 11px;
-  height: 13px;
-  border-left: 4px solid #fff;
-  border-right: 4px solid #fff;
-  box-sizing: border-box;
-  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.4));
+  background-image: var(--ui-icon-pause);
 }
 .radio-icon.next {
-  width: 0;
-  height: 0;
-  border-style: solid;
-  border-width: 6px 0 6px 9px;
-  border-color: transparent transparent transparent var(--blue-a-edge);
-  margin-right: 3px;
-}
-.radio-icon.next::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: -6px;
-  width: 3px;
+  width: 14px;
   height: 12px;
-  background: var(--blue-a-edge);
-}
-.radio-next {
-  width: 28px;
-  height: 28px;
-  flex: none;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  border: 2px solid var(--blue-b-edge);
-  background: var(--blue-b-raised);
-  box-shadow: 0 2px 3px rgba(30, 30, 100, 0.3), inset 0 1px 0 #fff;
-  padding: 0;
+  background-image: var(--ui-icon-next);
 }
 
-/* Название песни — на голубом утопленном «экранчике» */
+/* Название песни — в тёмном утопленном экранчике, тлеющими буквами */
 .radio-info {
+  --k: 0.5;
   width: 180px;
   min-width: 0;
-  padding: 2px 8px 3px;
-  border-radius: 10px;
-  border: 1px solid var(--blue-b-edge);
-  background: var(--blue-b);
-  box-shadow: var(--blue-b-inset);
-  color: var(--blue-b-ink);
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.45);
+  padding: 1px 4px 2px;
 }
 .radio-station {
   font-size: 10px;
-  font-weight: bold;
-  opacity: 0.8;
+  color: var(--g-ink-dim);
   line-height: 1.2;
 }
 .radio-title-box {
@@ -312,8 +461,8 @@ textarea {
 .radio-title {
   display: inline-block;
   font-size: 13px;
-  font-weight: bold;
-  color: inherit;
+  color: var(--g-ember);
+  text-shadow: 0 0 6px var(--g-ember-glow);
   text-decoration: none;
   padding-left: 2px;
 }
@@ -337,14 +486,15 @@ textarea {
   height: 3px;
   margin-top: 2px;
   border-radius: 2px;
-  background: rgba(20, 30, 120, 0.25);
+  background: rgba(255, 255, 255, 0.08);
   overflow: hidden;
 }
 .radio-progress i {
   display: block;
   width: 0;
   height: 100%;
-  background: var(--blue-b-ink);
+  background: var(--g-ember);
+  box-shadow: 0 0 4px var(--g-ember-glow);
 }
 .radio.tuning .radio-title {
   animation: radio-blink 1s steps(2, start) infinite;
@@ -355,31 +505,34 @@ textarea {
   }
 }
 .radio.error .radio-title {
-  color: #a3243a;
+  color: #e0604c;
 }
 
 /* Лампочка у названия станции: зелёная — играет, жёлтая — ловит волну, красная — не ловит. */
 .radio:not(.idle) .radio-station::before {
   content: '';
   display: inline-block;
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   margin-right: 5px;
   border-radius: 50%;
-  background: #8b8b98;
+  background: #5a524a;
   vertical-align: 0;
 }
 .radio.playing .radio-station::before {
-  background: #40ff90;
-  box-shadow: 0 0 6px #40ff90;
+  background: #9fd46a;
+  box-shadow: 0 0 6px #9fd46a;
 }
 .radio.tuning .radio-station::before {
-  background: #ffd84a;
+  background: #f0be62;
+  box-shadow: 0 0 5px #f0be62;
 }
 .radio.error .radio-station::before {
-  background: #ff6b5e;
+  background: #e0604c;
+  box-shadow: 0 0 5px #e0604c;
 }
 
+/* Громкость: тёмный желобок, заполненная часть тлеет, бегунок — костяная бусина */
 .radio-volume {
   width: 64px;
   height: 14px;
@@ -389,32 +542,30 @@ textarea {
   cursor: pointer;
 }
 .radio-volume::-webkit-slider-runnable-track {
-  height: 6px;
+  height: 5px;
   border-radius: 3px;
-  background: linear-gradient(90deg, #6f88f6 var(--vol), #b9bfdc var(--vol));
-  box-shadow: inset 0 1px 2px rgba(20, 25, 110, 0.4);
+  background: linear-gradient(90deg, #c8752a var(--vol), #1c130e var(--vol));
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.7), 0 1px 0 rgba(255, 220, 170, 0.15);
 }
 .radio-volume::-moz-range-track {
-  height: 6px;
+  height: 5px;
   border-radius: 3px;
-  background: linear-gradient(90deg, #6f88f6 var(--vol), #b9bfdc var(--vol));
-  box-shadow: inset 0 1px 2px rgba(20, 25, 110, 0.4);
+  background: linear-gradient(90deg, #c8752a var(--vol), #1c130e var(--vol));
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.7);
 }
 .radio-volume::-webkit-slider-thumb {
   appearance: none;
-  width: 14px;
-  height: 14px;
+  width: 13px;
+  height: 13px;
   margin-top: -4px;
-  border-radius: 50%;
-  border: 1px solid var(--blue-a-edge);
-  background: var(--blue-a-orb);
+  border: 0;
+  background: var(--ui-bead) center / contain no-repeat;
 }
 .radio-volume::-moz-range-thumb {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  border: 1px solid var(--blue-a-edge);
-  background: var(--blue-a-orb);
+  width: 13px;
+  height: 13px;
+  border: 0;
+  background: var(--ui-bead) center / contain no-repeat;
 }
 
 /* Спрятанный плеер soundcloud: звук идёт из него, но на экране его нет. */
@@ -437,7 +588,7 @@ textarea {
   inset: 0;
   pointer-events: none;
   z-index: 5;
-  color: var(--ui-text);
+  color: var(--g-ink);
 }
 #ui > * {
   pointer-events: auto;
@@ -449,51 +600,63 @@ textarea {
   height: 100%;
 }
 
-/* Колонка портретов слева */
+/* Колонка портретов слева: деревянная рамка (.skin-frame), портреты в костяных рамках.
+   Выбранный — костяная рамка тлеет (portrait-frame-selected). */
 .portraits {
+  --k: 0.5;
+  --inset: 8px;
   position: absolute;
-  top: 14px;
-  left: 14px;
+  top: 12px;
+  left: 12px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 10px;
-  border-radius: 22px;
-  background: var(--chrome);
-  border: 2px solid var(--chrome-edge);
-  box-shadow: var(--chrome-shadow);
+  gap: 2px;
+  padding: 2px;
 }
 .portrait {
   --accent: #fff;
-  width: 64px;
-  height: 64px;
+  position: relative;
+  width: 76px;
+  height: 76px;
   padding: 0;
-  /* как остальные кнопки: голубой глянец, тёмно-синяя обводка, тень снизу */
-  border-radius: 16px;
-  border: 2px solid var(--blue-a-edge);
-  background: var(--blue-a);
-  box-shadow: 0 3px 6px rgba(30, 30, 100, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.8);
-  overflow: hidden;
+  border: 0;
+  background: none;
+  box-shadow: none;
   cursor: pointer;
+  transition: filter 0.12s ease-out;
+}
+/* окно в костяной рамке — 17 % с каждой стороны */
+#ui .portrait img {
+  position: absolute;
+  left: 17%;
+  top: 17%;
+  width: 66%;
+  height: 66%;
+  background: #1a0808;
+}
+.portrait::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: var(--ui-portrait-frame) center / 100% 100% no-repeat;
+}
+.portrait.selected::after {
+  background-image: var(--ui-portrait-frame-selected);
 }
 .portrait:hover {
-  background: var(--blue-a-hover);
+  filter: brightness(1.15) drop-shadow(0 0 5px rgba(255, 110, 30, 0.5));
 }
 .portrait:active {
-  transform: translateY(1px);
-}
-/* выбранный — без свечения: белый кант и ровное кольцо цвета персонажа */
-.portrait.selected {
-  box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--accent), 0 3px 6px rgba(30, 30, 100, 0.35);
+  filter: brightness(0.85);
 }
 
 /* ---------- Нижняя панель ----------
-   Три блока по мотивам The Sims 2: портрет (выше остальных), работа и правый блок
-   с вкладками. Блоки соединены перемычками — панель обтекает содержимое. */
+   Четыре блока по мотивам The Sims 2: карточка персонажа (бархат, выше остальных),
+   потребности, работа и «пара слов» (тоже высокий). Блоки — деревянные рамки с железными
+   углами (.skin-frame), между ними железные скобы. Стиль — «готика особняка + кости». */
 .hud {
   --accent: #fff;
-  --hud-line: var(--chrome-edge); /* обводка */
-  --hud-ink: var(--chrome-ink); /* текст */
   position: absolute;
   left: 8px;
   right: 8px; /* всегда во всю ширину: блоки растягиваются, см. flex у каждого */
@@ -501,161 +664,168 @@ textarea {
   display: flex;
   align-items: flex-end;
   gap: 10px;
-  color: var(--hud-ink);
+  color: var(--g-ink);
   transform-origin: left bottom;
-  isolation: isolate; /* перемычки (z-index: -1) рисуются под блоками, но над сценой */
+  isolation: isolate;
 }
 .hud-block {
   position: relative;
-  box-sizing: border-box;
-  padding: 10px 12px;
-  border-radius: 22px;
-  border: 2px solid var(--hud-line);
-  background: var(--chrome);
-  box-shadow: var(--chrome-shadow);
+  --k: 0.8; /* рамки панели чуть тоньше нарисованных */
+  padding: 8px 16px 10px;
 }
-/* Перемычка к предыдущему блоку */
+/* Железная скоба к предыдущему блоку — поверх стыка двух рамок */
 .hud-block ~ .hud-block::before {
   content: '';
   position: absolute;
-  left: -14px;
-  width: 16px;
-  top: 34%;
-  height: 32%;
-  border: 2px solid var(--hud-line);
-  border-left: 0;
-  border-right: 0;
-  background: var(--chrome-band);
-  z-index: -1;
+  z-index: 1;
+  left: -38px;
+  top: calc(50% - 11px);
+  width: 49px;
+  height: 22px;
+  background: var(--ui-clamp) center / contain no-repeat;
+  pointer-events: none;
 }
 .hud-work,
 .hud-side {
-  height: 180px;
+  height: 200px;
 }
-.hud-title {
+.hud .hud-title {
   text-align: center;
   margin-bottom: 6px;
 }
 
-/* Блок с портретом */
+/* Карточка персонажа: имя; портрет в костяной рамке и слот действия; интересы и часы */
 .hud-me {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 8px 12px 10px;
-  border-radius: 28px 28px 22px 22px;
   flex: none;
+  height: 240px;
+  display: grid;
+  grid-template-columns: auto auto;
+  grid-template-areas:
+    'n n'
+    'r r'
+    'i c';
+  align-items: center;
+  justify-content: start;
+  gap: 2px 12px;
+  padding: 6px 18px 8px;
 }
-.hud-name {
-  --title-ink: var(--blue-a-edge);
+.hud .hud-name {
+  grid-area: n;
   white-space: nowrap;
+  padding-left: 4px;
 }
 .hud-me-row {
+  grid-area: r;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 10px;
 }
+/* Портрет под костяной рамкой: картинка в «окне» рамки, рамка — сверху на ::after */
 .hud-portrait {
-  width: 96px;
-  height: 96px;
+  position: relative;
+  width: 108px;
+  height: 108px;
   flex: none;
-  border-radius: 20px;
-  overflow: hidden;
-  border: 3px solid #fff;
-  box-shadow: 0 0 0 3px var(--accent), 0 0 0 5px var(--hud-line);
-  background: var(--blue-b);
+}
+/* окно в рамке — 17 % размера с каждой стороны (по рисунку костяной рамки) */
+#ui .hud-portrait img {
+  position: absolute;
+  left: 17%;
+  top: 17%;
+  width: 66%;
+  height: 66%;
+  background: #1a0808;
+}
+.hud-portrait::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--ui-portrait-frame) center / 100% 100% no-repeat;
+  pointer-events: none;
 }
 .hud-action-col {
-  width: 62px;
+  width: 70px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 5px;
-  padding-top: 8px;
+  gap: 6px;
 }
 .hud-action {
   position: relative;
-  width: 48px;
-  height: 48px;
-  border-radius: 14px;
+  width: 56px;
+  height: 56px;
   display: grid;
   place-items: center;
-  font-size: 26px;
-  background: var(--blue-b-raised);
-  border: 2px solid var(--blue-b-edge);
-  box-shadow: 0 3px 5px rgba(30, 30, 100, 0.3), inset 0 2px 0 #fff;
+  font-size: 28px;
+  --k: 0.55;
 }
 .hud-action.empty {
-  background: var(--blue-b);
-  border: 2px dashed rgba(255, 255, 255, 0.7);
-  box-shadow: var(--blue-b-inset);
+  opacity: 0.75;
 }
-.hud-action .cancel {
+.hud .hud-action .cancel {
   position: absolute;
-  top: -9px;
-  right: -9px;
-  width: 22px;
-  height: 22px;
-  padding: 0;
-  font-size: 11px;
+  top: -12px;
+  right: -14px;
+  width: 26px;
+  height: 26px;
 }
 .hud-action.empty .cancel {
   display: none;
 }
 .hud-action-label {
   font-size: 12px;
-  font-weight: bold;
   text-align: center;
   line-height: 1.15;
+  color: var(--g-ink-dim);
 }
 
-/* Интересы: значки под портретом */
+/* Интересы: круглые деревянные кнопки со значками */
 .hud-interests {
+  grid-area: i;
   display: flex;
-  gap: 6px;
+  gap: 4px;
 }
 .interest {
-  width: 34px;
-  height: 34px;
-  padding: 0;
+  width: 36px;
+  height: 36px;
   display: grid;
   place-items: center;
-  font-size: 18px;
-  border-radius: 11px;
-  border: 2px solid var(--blue-b-edge);
-  background: var(--blue-b-raised);
-  box-shadow: 0 2px 4px rgba(30, 30, 100, 0.3), inset 0 1px 0 #fff;
-  cursor: pointer;
-  transition: transform 0.12s;
-}
-.interest:hover {
-  transform: translateY(-2px);
+  font-size: 17px;
 }
 
+/* Часы: костяная табличка, тлеющие пиксельные цифры.
+   Края таблички толстые (12,5 px) — рисуем их, но места они не занимают (border-width 0,
+   ширина рисунка — border-image-width), иначе внутри остаётся полоса в 12 px и 20-пиксельные
+   цифры съезжают вниз. Содержимое — по центру по обеим осям: у 5by7 цифры (14 px) стоят ровно
+   посередине строки, у Inter строчные с цифрами — тоже, поэтому выравнивание по центру, а не
+   по базовой линии. */
 .hud-clock {
+  grid-area: c;
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 3px 12px;
-  border-radius: 10px;
-  border: 2px solid var(--blue-b-edge);
-  background: var(--blue-b);
-  box-shadow: var(--blue-b-inset);
-  color: var(--blue-b-ink);
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.45);
+  gap: 7px;
+  padding: 0 16px;
+  height: 37px;
+  box-sizing: border-box;
+  border-style: solid;
+  border-width: 0;
+  border-image: var(--ui-clock) var(--ui-clock-slice) fill / var(--ui-clock-w);
   white-space: nowrap;
+  line-height: 1;
 }
 .hud-clock .date {
   font-size: 12px;
-  opacity: 0.8;
+  color: var(--g-ink-dim);
 }
 .hud-clock .time {
-  font-size: 16px;
-  font-weight: bold;
+  font: 700 20px/1 '5by7', monospace; /* 20 px — пиксель буквы ровно в 2 пикселя экрана */
+  letter-spacing: 0;
+  color: var(--g-ember);
+  text-shadow: 0 0 6px var(--g-ember-glow);
 }
 
-/* Работа: плитки в утопленной рамке */
+/* Работа: строки — утопленные экранчики */
 .hud-work {
   flex: 1 1 360px; /* 360 — наименьшая ширина, лишнее место делится между блоками */
   display: flex;
@@ -665,52 +835,40 @@ textarea {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 6px;
-  border-radius: 14px;
-  background: var(--blue-b);
-  box-shadow: var(--blue-b-inset);
-  border: 2px solid var(--blue-b-edge);
-  scrollbar-width: thin;
-  scrollbar-color: var(--blue-b-edge) transparent;
 }
 .jobs {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
+  padding-right: 2px;
 }
 .job {
-  padding: 2px 9px 3px;
-  border-radius: 9px;
-  border-left: 4px solid var(--accent);
-  background: var(--chrome-soft);
-  box-shadow: 0 2px 3px rgba(20, 25, 110, 0.3), inset 0 1px 0 #fff;
-  line-height: 1.2;
+  --k: 0.5;
+  padding: 0 6px 1px;
+  line-height: 1.15;
 }
 .job-place {
   font-size: 13px;
-  font-weight: bold;
+  color: var(--g-ink);
 }
 .job-role {
-  font-size: 12px;
-  opacity: 0.8;
+  font-size: 11.5px;
+  color: var(--g-ink-dim);
 }
 
-/* «пара слов»: текст от лица персонажа на светлой «бумаге» */
+/* «пара слов»: текст от лица персонажа в тёмном экранчике */
 .hud-note {
   flex: 1.3 1 320px; /* тексту достаётся больше свободного места */
-  height: 230px; /* как блок с портретом: по краям высокие блоки, в середине низкие */
+  height: 240px; /* как карточка персонажа: по краям высокие блоки, в середине низкие */
   display: flex;
   flex-direction: column;
-  border-radius: 28px 28px 22px 22px;
 }
 .note-text {
-  padding: 7px 11px;
-  background: linear-gradient(180deg, #e9edff 0%, #f6f7ff 30%, #ffffff 100%);
-  box-shadow: inset 0 3px 5px rgba(20, 25, 110, 0.3);
-  color: var(--blue-b-ink);
-  text-shadow: none;
+  --k: 0.7;
+  padding: 2px 6px 2px 4px;
   font-size: 13px;
-  line-height: 1.35;
+  line-height: 1.38;
+  color: var(--g-ink);
 }
 .note-text p {
   margin: 0 0 6px;
@@ -736,25 +894,12 @@ textarea {
 .side-tab {
   width: 32px;
   height: 32px;
-  padding: 0;
-  display: grid;
-  place-items: center;
-  font-size: 16px;
-  border-radius: 10px;
-  border: 2px solid var(--chrome-edge);
-  background: var(--chrome-soft);
-  box-shadow: 0 2px 3px rgba(30, 30, 100, 0.3), inset 0 1px 0 #fff;
-  cursor: pointer;
-  opacity: 0.8;
-}
-.side-tab:hover {
-  opacity: 1;
+  font-size: 15px;
+  opacity: 0.75;
 }
 .side-tab.active {
   opacity: 1;
-  border-color: var(--blue-b-edge);
-  background: var(--blue-b-raised);
-  box-shadow: 0 0 0 2px var(--accent), 0 2px 3px rgba(30, 30, 100, 0.3);
+  filter: drop-shadow(0 0 5px rgba(255, 110, 30, 0.55));
 }
 .side-content {
   flex: 1;
@@ -767,60 +912,45 @@ textarea {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding-bottom: 6px;
+  padding-bottom: 4px;
 }
 
-/* Цвет шкал по заполненности: зелёный, жёлтый, красный */
+/* Цвет шкал по заполненности: зелёный, жёлтый, красный — тлеющие, с бликом сверху */
 .good {
-  background: linear-gradient(90deg, #58b032, #b8ec7a 70%, #e4ffc4);
+  --glow: rgba(140, 190, 70, 0.45);
+  background: linear-gradient(180deg, #c2df86, #789844 55%, #4f6a28);
 }
 .mid {
-  background: linear-gradient(90deg, #c99a12, #f2dc5a 70%, #fff6b8);
+  --glow: rgba(230, 160, 40, 0.45);
+  background: linear-gradient(180deg, #f0be62, #ad761e 55%, #6e4a10);
 }
 .low {
-  background: linear-gradient(90deg, #b8301f, #f07a5a 70%, #ffc9b5);
+  --glow: rgba(220, 50, 40, 0.5);
+  background: linear-gradient(180deg, #e86a58, #9f211f 55%, #5e1010);
 }
-/* Потребности: две колонки, подпись над полоской */
+/* Потребности: две колонки, подпись над желобком */
 .needs {
   display: grid;
   grid-template-columns: 1fr 1fr;
   grid-auto-flow: column;
-  gap: 6px 18px;
+  gap: 4px 16px;
 }
 .need-label {
-  font-size: 13px;
-  font-weight: bold;
+  font-size: 12px;
   text-align: center;
-  margin-bottom: 2px;
+  margin-bottom: 1px;
+  color: var(--g-ink);
 }
 .need-bar {
-  position: relative;
-  height: 11px;
-  border-radius: 6px;
-  overflow: hidden;
-  border: 2px solid var(--blue-b-edge);
-  background: var(--blue-b);
-  box-shadow: var(--blue-b-inset);
+  --k: 0.72;
 }
-.need-fill {
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  border-radius: 0 4px 4px 0;
-}
-
-/* Подсказка у значков интересов и вкладок */
+/* Подсказка у значков интересов и вкладок: маленькая деревянная табличка */
 #ui .hud-tip {
   position: fixed;
   z-index: 30;
-  max-width: 220px;
-  padding: 5px 11px 6px;
-  border-radius: 10px;
-  border: 2px solid var(--chrome-edge);
-  background: var(--chrome-soft);
-  color: var(--chrome-ink);
-  box-shadow: var(--chrome-shadow);
+  max-width: 230px;
+  padding: 4px 12px 6px;
+  color: var(--g-ink);
   pointer-events: none;
   opacity: 0;
   transform: translateY(4px);
@@ -830,8 +960,8 @@ textarea {
   opacity: 1;
   transform: none;
 }
-.hud-tip-title {
-  font-size: 10px; /* в пиксельном шрифте 10 px — один пиксель буквы на пиксель экрана */
+#ui .hud-tip-title {
+  font-size: 16px;
   margin-bottom: 2px;
 }
 .hud-tip-text {
@@ -877,98 +1007,142 @@ textarea {
     right: 6px;
     bottom: 6px;
     display: grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr); /* не шире экрана, что бы ни было внутри */
     gap: 0;
     align-items: stretch;
   }
   .hud-block ~ .hud-block::before {
-    display: none;
+    display: none; /* блоки друг под другом — скобы не нужны */
+  }
+  /* На телефоне всё компактнее: панель занимает не больше прежней «хромовой» (~290 px
+     по высоте), иначе на невысоких экранах комната становится крошечной. */
+  .hud-block {
+    --k: 0.55;
+    --inset: 8px;
   }
   .hud-me {
-    display: grid;
-    grid-template-columns: 68px auto 1fr auto;
+    height: auto;
+    grid-template-columns: 62px auto 1fr auto;
     grid-template-areas:
       'p n n a'
       'p i c a';
-    align-items: center;
-    gap: 6px 10px;
-    padding: 8px 10px;
-    border-radius: 22px;
-    margin-bottom: 8px;
+    gap: 2px 6px;
+    padding: 2px 6px 3px;
+    margin-bottom: 4px;
   }
   .hud-me-row {
     display: contents;
   }
   .hud-portrait {
     grid-area: p;
-    width: 64px;
-    height: 64px;
-    border-radius: 16px;
+    width: 62px;
+    height: 62px;
   }
-  .hud-name {
+  .hud .hud-name {
     grid-area: n;
+    font-size: 18px;
     overflow: hidden;
     text-overflow: ellipsis;
+    padding-left: 0;
   }
   .hud-interests {
-    grid-area: i;
+    gap: 3px;
   }
   .interest {
-    width: 32px;
-    height: 32px;
-    font-size: 17px;
+    width: 28px;
+    height: 28px;
+    font-size: 13px;
   }
   .hud-clock {
-    grid-area: c;
     justify-self: start;
-    padding: 2px 10px;
+    height: 30px;
   }
   .hud-clock .date {
     display: none;
   }
   .hud-action-col {
     grid-area: a;
-    width: 58px;
-    padding-top: 6px;
+    width: 50px;
+    gap: 3px;
   }
   .hud-action {
-    width: 42px;
-    height: 42px;
-    font-size: 22px;
+    width: 36px;
+    height: 36px;
+    font-size: 18px;
+  }
+  .hud .hud-action .cancel {
+    top: -9px;
+    right: -11px;
+    width: 22px;
+    height: 22px;
+  }
+  .hud-action-label {
+    font-size: 10.5px;
+  }
+  /* Совсем узкие телефоны: часы не влезают рядом с интересами — прячем их */
+  @media (max-width: 360px) {
+    .hud-clock {
+      display: none;
+    }
   }
 
-  /* Вкладки — как корешки папок над блоком */
+  /* строки в блоках — плотнее */
+  .need-label {
+    font-size: 11px;
+  }
+  .need-bar {
+    --k: 0.6;
+  }
+  .job {
+    --k: 0.4;
+  }
+  .job-place {
+    font-size: 12px;
+  }
+  .job-role {
+    font-size: 11px;
+  }
+  .note-text {
+    --k: 0.55;
+    font-size: 12.5px;
+  }
+
+  /* Вкладки — бархатные таблички над блоком: активная выпуклая и тлеет, остальные утоплены.
+     Ширина вкладки — по длине слова, чтобы длинное слово не упиралось в железные углы. */
   .hud-mtabs {
     display: flex;
-    gap: 4px;
-    padding: 0 16px;
+    gap: 2px;
+    padding: 0 2px;
+    margin-bottom: 1px;
   }
   .hud-mtabs button {
-    /* пиксельный 5by7, как заголовки. 20 px не влезает («потребности» — 132 px),
-       15 px — точка буквы 1,5 px: на экранах телефонов (плотность 2–3) всё равно чётко.
-       Ширина вкладки — по длине слова, чтобы длинное слово не упиралось в края. */
+    --k: 0.66;
+    min-width: 0;
     flex: 1 1 auto;
-    padding: 7px 6px 8px;
-    font: 700 15px/1 '5by7', monospace;
+    height: calc(48px * var(--k));
+    /* у антиквы Old Standard TT высокий верхний запас строки — буквы сидят низко;
+       снизу отступ больше, чтобы строчные встали по середине бархата (замерено) */
+    padding: 2px 4px 0; /* бархатная середина на ~1 px ниже центра картинки (замерено) */
+    box-sizing: border-box;
+    font: 700 15px/1 'Old Standard TT', serif;
+    white-space: nowrap;
     letter-spacing: 0;
-    color: #fff;
-    border: 2px solid var(--blue-b-edge);
-    border-bottom: 0;
-    border-radius: 14px 14px 0 0;
-    background: linear-gradient(180deg, #c3cdff 0%, #8d9ef0 60%, #7486e4 100%);
-    text-shadow: 0 1px 1px rgba(20, 30, 120, 0.6);
+    color: var(--g-ink-dim);
+    text-shadow: 0 1px 2px #000;
+    background: none;
+    /* верхний и нижний края только рисуются (border-image-width), места не занимают —
+       иначе на текст остаётся полоса в несколько пикселей и его не выровнять */
+    border-style: solid;
+    border-width: 0 calc(var(--k) * var(--ui-tab-wr)) 0 calc(var(--k) * var(--ui-tab-wl));
+    border-image: var(--ui-tab) var(--ui-tab-slice) fill;
+    border-image-width: calc(var(--k) * var(--ui-tab-wt)) calc(var(--k) * var(--ui-tab-wr))
+      calc(var(--k) * var(--ui-tab-wb)) calc(var(--k) * var(--ui-tab-wl));
     cursor: pointer;
   }
   .hud-mtabs button.active {
-    color: var(--hud-ink);
-    text-shadow: 0 1px 0 #fff;
-    border-color: var(--chrome-edge);
-    background: linear-gradient(180deg, #ffffff, #eceef8);
-    /* корешок сливается с блоком под ним */
-    position: relative;
-    z-index: 1;
-    margin-bottom: -2px;
-    padding-bottom: 10px;
+    border-image-source: var(--ui-tab-active);
+    color: #fff0d6;
+    text-shadow: 0 0 8px rgba(255, 140, 50, 0.7), 0 1px 2px #000;
   }
   .hud-work,
   .hud-side,
@@ -994,20 +1168,29 @@ textarea {
   /* Остальной интерфейс */
   .portraits {
     flex-direction: row;
-    top: 8px;
-    left: 8px;
-    gap: 8px;
-    padding: 6px;
-    border-radius: 18px;
+    top: 6px;
+    left: 6px;
+    gap: 0;
+    padding: 0;
+    --inset: 6px;
   }
   .portrait {
-    width: 48px;
-    height: 48px;
-    border-radius: 12px;
+    width: 56px;
+    height: 56px;
   }
   #corner {
     top: 8px;
     right: 8px;
+    gap: 2px;
+  }
+  #corner .pill,
+  .radio.idle .radio-play {
+    --k: 0.7;
+    font-size: 13px;
+  }
+  #corner .pill.small {
+    --k: 0.6;
+    font-size: 12px;
   }
   /* Радио: громкость на телефоне — кнопками самого телефона. */
   .radio-volume {
@@ -1018,7 +1201,9 @@ textarea {
   }
 }
 
-/* ---------- Радиальное меню ---------- */
+/* ---------- Радиальное меню ----------
+   В центре — портрет выбранного в костяном кольце, по кругу — бусины-соединители и
+   «таблетки» (класс .pill, размер поменьше). Занятый пункт — серая плашка и тлеющая надпись. */
 .radial-overlay {
   position: fixed;
   inset: 0;
@@ -1034,79 +1219,67 @@ textarea {
   position: absolute;
   left: 0;
   top: 0;
-  width: 60px;
-  height: 60px;
+  width: 70px;
+  height: 68.5px;
   translate: -50% -50%;
-  border-radius: 50%;
-  overflow: hidden;
-  border: 3px solid #fff;
-  box-shadow: 0 0 0 3px var(--accent), 0 0 0 5px var(--chrome-edge), 0 4px 10px rgba(0, 0, 0, 0.45);
-  background: var(--blue-b);
   animation: radial-pop 0.18s ease-out both;
+}
+#ui .radial-center img {
+  position: absolute;
+  left: 13%;
+  top: 13%;
+  width: 74%;
+  height: 74%;
+  border-radius: 50%;
+  background: #1a0808;
+}
+.radial-center::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--ui-bone-ring) center / 100% 100% no-repeat;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.6));
 }
 .radial-dot {
   position: absolute;
-  width: 14px;
-  height: 14px;
+  width: 11px;
+  height: 11px;
   translate: -50% -50%;
-  border-radius: 50%;
-  background: var(--blue-a-orb);
-  border: 1px solid var(--blue-a-edge);
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.85), 0 2px 4px rgba(0, 0, 0, 0.35);
+  background: var(--ui-bead) center / contain no-repeat;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.7));
   animation: radial-pop 0.2s ease-out both;
 }
 .radial-pill {
+  --k: 0.95; /* выше остальных «таблеток»: по ним целятся мышью и пальцем */
   position: absolute;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  white-space: nowrap;
-  font: inherit;
   font-size: 14px;
-  font-weight: bold;
-  color: #fff;
-  padding: 6px 14px;
-  border-radius: 999px;
-  border: 2px solid var(--blue-a-edge);
-  background: var(--blue-a);
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.85), 0 4px 8px rgba(20, 20, 80, 0.45),
-    inset 0 1px 0 rgba(255, 255, 255, 0.8);
-  text-shadow: 0 1px 1px rgba(20, 30, 120, 0.7);
-  cursor: pointer;
   animation: radial-pop 0.2s ease-out both;
 }
-.radial-pill:hover {
-  background: var(--blue-a-hover);
-}
-.radial-pill.disabled {
-  cursor: not-allowed;
-  color: #8a8eae;
-  text-shadow: 0 1px 0 #fff;
-  background: var(--chrome-soft);
-  border-color: var(--chrome-edge);
+/* значок-эмодзи: текст в «таблетке» поднят ради строчных букв (0,12 em), значку это не нужно */
+.radial-icon {
+  translate: 0 0.12em;
 }
 .radial-busy {
-  font-size: 11px;
-  padding: 1px 7px;
-  border-radius: 999px;
-  background: linear-gradient(180deg, #ffd3e4, #f08db3);
-  border: 1px solid #c25d86;
-  color: #6e1a3d;
-  text-shadow: none;
+  font-size: 10.5px;
+  padding: 1px 6px 2px;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.5);
+  color: #f0a070;
+  text-shadow: 0 0 4px rgba(255, 110, 30, 0.6);
 }
 /* Телефон: кнопки и портрет в центре мельче (расстояния — в menu.js, COMPACT). */
 .radial.compact .radial-center {
-  width: 52px;
-  height: 52px;
+  width: 58px;
+  height: 57px;
 }
 .radial.compact .radial-pill {
-  font-size: 13px;
-  padding: 5px 11px;
-  gap: 5px;
+  --k: 0.82;
+  font-size: 12.5px;
+  gap: 4px;
 }
 .radial.compact .radial-dot {
-  width: 12px;
-  height: 12px;
+  width: 9px;
+  height: 9px;
 }
 .radial.measuring * {
   animation: none !important;
@@ -1122,24 +1295,23 @@ textarea {
   }
 }
 
-/* ---------- Панели: работы, ссылки, о себе ---------- */
+/* ---------- Панели: работы, ссылки, о себе ----------
+   Деревянная рамка (.skin-frame); заголовок антиквой, крестик — черепок (.skin-close),
+   карточки работ — тёмные экранчики (.skin-well), ссылки — «таблетки» (.pill). */
 .panel {
   --accent: #fff;
+  --k: 0.8;
   /* Слева, рядом с портретами: компьютер и сидящий за ним персонаж остаются видны. */
   position: absolute;
   z-index: 15;
-  top: 14px;
-  left: 120px;
-  width: min(480px, 44vw);
-  max-height: calc(100vh - 270px); /* не заходит на нижнюю панель */
+  top: 12px;
+  left: 132px;
+  width: min(500px, 44vw);
+  max-height: calc(100vh - 280px); /* не заходит на нижнюю панель */
   display: flex;
   flex-direction: column;
-  border-radius: 26px;
-  overflow: hidden;
-  background: var(--chrome);
-  color: var(--chrome-ink);
-  border: 2px solid var(--chrome-edge);
-  box-shadow: var(--chrome-shadow), 0 10px 30px rgba(20, 10, 60, 0.45);
+  padding: 6px 12px 10px;
+  color: var(--g-ink);
   animation: panel-in 0.22s ease-out both;
 }
 @keyframes panel-in {
@@ -1153,85 +1325,45 @@ textarea {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  /* заголовок — голубой «экранчик», вставленный в хромовый корпус */
-  margin: 10px 10px 0;
-  padding: 8px 8px 8px 16px;
-  border-radius: 16px;
-  border: 2px solid var(--blue-b-edge);
-  background: var(--blue-b);
-  box-shadow: var(--blue-b-inset), 0 1px 0 #fff;
-  color: var(--blue-b-ink);
-}
-.panel-title {
-  --title-ink: var(--blue-b-ink);
+  padding: 6px 4px 8px 12px;
 }
 .panel-x {
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 31.5px;
   flex: none;
-  font-size: 13px;
 }
 .panel-body {
-  padding: 16px 20px;
+  padding: 4px 6px 4px 4px;
   overflow: auto;
-  scrollbar-width: thin;
-  scrollbar-color: var(--chrome-edge) transparent;
-}
-
-/* Круглые кнопки-крестики: голубые глянцевые шарики, как в старых плеерах */
-.hud-action .cancel,
-.panel-x,
-.notice-x,
-.banner-x {
-  padding: 0;
-  border-radius: 50%;
-  border: 1px solid var(--blue-a-edge);
-  background: var(--blue-a-orb);
-  color: #fff;
-  font-family: system-ui, sans-serif;
-  font-weight: bold;
-  line-height: 1;
-  text-shadow: 0 1px 1px rgba(20, 30, 120, 0.8);
-  box-shadow: 0 0 0 2px #fff, 0 2px 4px rgba(20, 20, 80, 0.45);
-  cursor: pointer;
-}
-.hud-action .cancel:hover,
-.panel-x:hover,
-.notice-x:hover,
-.banner-x:hover {
-  filter: brightness(1.12);
 }
 .panel-foot {
   display: flex;
   justify-content: flex-end;
-  padding: 10px 16px 14px;
+  padding: 8px 2px 0;
 }
 .works-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 14px;
+  gap: 10px;
 }
 .work-card {
+  --k: 0.6;
   display: block;
-  padding: 8px;
-  border-radius: 16px;
-  background: var(--chrome-soft);
-  border: 1px solid var(--chrome-edge);
+  padding: 2px;
   color: inherit;
   text-decoration: none;
-  box-shadow: 0 3px 6px rgba(40, 30, 90, 0.25), inset 0 1px 0 #fff;
-  transition: transform 0.12s;
+  transition: filter 0.12s ease-out;
 }
 a.work-card:hover {
-  transform: translateY(-2px);
+  filter: brightness(1.15) drop-shadow(0 0 5px rgba(255, 110, 30, 0.45));
 }
 .work-thumb {
   aspect-ratio: 4 / 3;
-  border-radius: 10px;
   overflow: hidden;
   display: grid;
   place-items: center;
-  background: repeating-linear-gradient(45deg, var(--accent) 0 10px, color-mix(in srgb, var(--accent) 75%, #fff) 10px 20px);
+  background: repeating-linear-gradient(45deg, #3a2418 0 10px, #2c1b12 10px 20px);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.6);
 }
 .work-thumb img {
   width: 100%;
@@ -1240,42 +1372,35 @@ a.work-card:hover {
   image-rendering: auto;
 }
 .work-number {
-  font-size: 28px;
-  font-weight: bold;
-  color: #fff;
-  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.3);
+  font: 700 20px/1 '5by7', monospace;
+  color: var(--g-ember);
+  text-shadow: 0 0 6px var(--g-ember-glow);
 }
 .work-title {
-  margin-top: 8px;
-  font-weight: bold;
+  margin-top: 6px;
   font-size: 14px;
+  color: var(--g-title);
 }
 .work-desc {
   font-size: 12px;
-  opacity: 0.75;
+  color: var(--g-ink-dim);
 }
 .links-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 .link-pill {
-  display: block;
-  padding: 10px 18px;
-  border-radius: 999px;
-  font-weight: bold;
-  text-decoration: none;
-  color: #fff;
-  text-shadow: 0 1px 1px rgba(20, 30, 120, 0.7);
-  background: var(--blue-a);
-  border: 2px solid var(--blue-a-edge);
-  box-shadow: 0 3px 6px rgba(30, 30, 100, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  --k: 0.9;
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  font-size: 15px;
 }
-.link-pill:hover {
-  background: var(--blue-a-hover);
-}
-.link-pill::after {
+.link-pill::before {
   content: ' ↗';
+  order: 2;
+  color: var(--g-ink-dim);
 }
 .about {
   display: flex;
@@ -1283,14 +1408,24 @@ a.work-card:hover {
   align-items: flex-start;
 }
 .about-portrait {
-  width: 96px;
-  height: 96px;
+  position: relative;
+  width: 108px;
+  height: 108px;
   flex: none;
-  border-radius: 22px;
-  overflow: hidden;
-  border: 3px solid #fff;
-  box-shadow: 0 0 0 3px var(--accent), 0 0 0 5px var(--chrome-edge);
-  background: var(--blue-b);
+}
+#ui .about-portrait img {
+  position: absolute;
+  left: 17%;
+  top: 17%;
+  width: 66%;
+  height: 66%;
+  background: #1a0808;
+}
+.about-portrait::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--ui-portrait-frame) center / 100% 100% no-repeat;
 }
 .about-text {
   margin: 0;
@@ -1317,23 +1452,22 @@ a.work-card:hover {
   color: #ffb0b8;
 }
 
-/* ---------- Письмо-приветствие (правый верхний угол, под кнопками) ---------- */
+/* ---------- Письмо-приветствие (правый верхний угол, под кнопками) ----------
+   Бархат в деревянной рамке (.skin-frame.velvet), конверт — на деревянном диске,
+   крестик — черепок. */
 .notice {
+  --k: 0.6;
   pointer-events: auto;
   position: absolute;
   z-index: 12;
   top: calc(var(--corner-bottom, 72px) + 12px); /* под кнопками в углу (их высоту считает main.js) */
   right: 12px;
-  width: min(300px, 40vw);
+  width: min(330px, 40vw);
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  padding: 12px 12px 14px 12px;
-  border-radius: 20px;
-  background: var(--chrome);
-  color: var(--chrome-ink);
-  border: 2px solid var(--chrome-edge);
-  box-shadow: var(--chrome-shadow), 0 8px 24px rgba(20, 10, 60, 0.4);
+  padding: 8px 10px 10px 8px;
+  color: var(--g-ink);
   animation: notice-in 0.45s cubic-bezier(0.2, 1.4, 0.4, 1) both;
 }
 .notice.leaving {
@@ -1357,11 +1491,8 @@ a.work-card:hover {
   flex: none;
   display: grid;
   place-items: center;
-  font-size: 22px;
-  border-radius: 50%;
-  border: 2px solid var(--blue-b-edge);
-  background: var(--blue-b-raised);
-  box-shadow: 0 2px 4px rgba(30, 30, 100, 0.3), inset 0 2px 0 #fff;
+  font-size: 20px;
+  pointer-events: none; /* это значок, а не кнопка */
 }
 .notice-body {
   flex: 1;
@@ -1369,6 +1500,7 @@ a.work-card:hover {
   padding-top: 2px;
 }
 .notice-title {
+  font-size: 20px;
   margin-bottom: 4px;
 }
 .notice-text {
@@ -1376,32 +1508,28 @@ a.work-card:hover {
   line-height: 1.35;
 }
 .notice-x {
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 27.5px;
   flex: none;
-  font-size: 11px;
 }
 
-/* ---------- Баннер взаимодействия (поговорить, пощекотать…) ---------- */
-/* Сверху по центру: портрет того, кто начал, значок и текст, портрет второго. */
+/* ---------- Баннер взаимодействия (поговорить, пощекотать…) ----------
+   Сверху по центру, бархат в деревянной рамке: портрет того, кто начал, значок и текст,
+   портрет второго. Портреты — в костяных кольцах. */
 .banner {
+  --k: 0.6;
   pointer-events: auto;
   position: absolute;
   z-index: 13;
-  top: 14px;
+  top: 12px;
   left: 50%;
   translate: -50% 0;
-  width: min(440px, 50vw);
-  box-sizing: border-box;
+  width: min(460px, 50vw);
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 10px;
-  border-radius: 999px;
-  background: var(--chrome);
-  color: var(--chrome-ink);
-  border: 2px solid var(--chrome-edge);
-  box-shadow: var(--chrome-shadow), 0 8px 24px rgba(20, 10, 60, 0.4);
+  padding: 4px 10px;
+  color: var(--g-ink);
   animation: banner-in 0.4s cubic-bezier(0.2, 1.4, 0.4, 1) both;
 }
 .banner.leaving {
@@ -1421,20 +1549,28 @@ a.work-card:hover {
 }
 .banner-face {
   --accent: #fff;
-  width: 52px;
-  height: 52px;
+  position: relative;
+  width: 58px;
+  height: 57px;
   flex: none;
-  border-radius: 50%;
-  overflow: hidden;
-  border: 3px solid var(--accent);
-  background: var(--blue-b);
-  box-shadow: 0 0 0 2px var(--chrome-edge), 0 2px 4px rgba(30, 30, 100, 0.3);
 }
+#ui .banner-face img,
 .banner-face img {
-  width: 100%;
-  height: 100%;
+  position: absolute;
+  left: 13%;
+  top: 13%;
+  width: 74%;
+  height: 74%;
+  border-radius: 50%;
   display: block;
   image-rendering: pixelated;
+  background: #1a0808;
+}
+.banner-face::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--ui-bone-ring) center / 100% 100% no-repeat;
 }
 .banner-body {
   flex: 1;
@@ -1451,20 +1587,18 @@ a.work-card:hover {
 }
 .banner-text {
   font-size: 14px;
-  font-weight: bold;
   line-height: 1.3;
 }
 .banner-x {
   position: absolute;
-  top: -8px;
-  right: -8px;
-  width: 24px;
-  height: 24px;
-  font-size: 11px;
+  top: -12px;
+  right: -12px;
+  width: 28px;
+  height: 27.5px;
 }
 /* Пока висит баннер, письмо-приветствие спускается под него (плавность — ниже, у .notice). */
 #ui:has(.banner:not(.leaving)) .notice {
-  top: 108px;
+  top: 112px;
 }
 
 /* ---------- Книжный шкаф: ссылка с подписью справа ---------- */
@@ -1479,8 +1613,7 @@ a.work-card:hover {
 .link-row .link-note {
   white-space: nowrap;
   font-size: 13px;
-  font-weight: 600;
-  opacity: 0.75;
+  color: var(--g-ink-dim);
 }
 
 /* ---------- Крупный план плаката ---------- */
@@ -1521,13 +1654,13 @@ body.closeup #ui .closeup-bar {
   transition-delay: 0.45s;
 }
 .closeup-link {
-  white-space: nowrap;
-  font-size: 18px;
-  padding: 10px 26px;
+  --k: 1;
+  font-size: 17px;
   text-decoration: none;
 }
-.closeup-link::after {
-  content: ' ↗';
+.closeup-link::before {
+  content: '↗'; /* ::after занят подсветкой «таблетки» */
+  order: 2;
 }
 .closeup-link[hidden] {
   display: none;
@@ -1557,3 +1690,7 @@ body.closeup #ui .closeup-bar {
     max-height: calc(100vh - var(--corner-bottom, 72px) - 8px - 320px); /* над нижней панелью */
   }
 }
+
+.task { display: flex; gap: 8px; align-items: baseline; }
+.task-check { flex: none; color: #d8c39f; }
+.task.done .task-check { color: #a7d177; }

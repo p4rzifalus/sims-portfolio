@@ -27,7 +27,7 @@ export function freeSpot(action, item, occupancy, actor) {
 
 // actor — кто выполняет; target — по кому кликнули (для действий с персонажем);
 // item — предмет из data.js (для действий с предметом).
-export function performAction({ actor, action, item, target, furniture, occupancy, panels, cameraYaw }) {
+export function performAction({ actor, action, item, target, furniture, occupancy, panels, cameraYaw, onReached }) {
   const seatItem = action.sitOn ? furniture.find((f) => f.id === action.sitOn) : null;
 
   return actor.runTask({ icon: action.icon, label: action.label }, async (task) => {
@@ -85,11 +85,13 @@ export function performAction({ actor, action, item, target, furniture, occupanc
       if (action.panelDelay) await task.step(actor.wait(action.panelDelay));
       const owner = action.who === 'target' && target ? target : actor; // чьи данные показывать
       const panel = panels.open(action.panel, owner.data);
+      onReached?.();
       task.onCleanup(() => panel.close());
       const how = await task.step(panel.closed); // закрыли панель — действие закончено, дальше «уборка»
       // Панель вытеснил другой персонаж — этот продолжает сидеть / держать предмет.
       if (how === 'replaced' && (sits || action.prop)) await task.step(new Promise(() => {}));
     } else if (sits || action.prop) {
+      onReached?.();
       // Без панели: сидит / держит предмет, пока действие не отменят.
       await task.step(new Promise(() => {}));
     }
@@ -130,7 +132,7 @@ function spotNear(grid, actor, target) {
 
 const yawTo = (from, to) => Math.atan2(to.position.x - from.position.x, to.position.z - from.position.z);
 
-export function performSocial({ actor, target, action, choice, grid, banners, getPortrait, duration }) {
+export function performSocial({ actor, target, action, choice, grid, banners, getPortrait, duration, onCompleted }) {
   return actor.runTask({ icon: action.icon, label: action.actorStatus || action.label }, async (task) => {
     // 1. Второй бросает своё дело (встаёт со стула, останавливается)…
     await task.step(target.cancelTask());
@@ -183,5 +185,6 @@ export function performSocial({ actor, target, action, choice, grid, banners, ge
     });
     task.onCleanup(closeBanner);
     await task.step(actor.wait(action.duration || duration));
+    onCompleted?.();
   });
 }

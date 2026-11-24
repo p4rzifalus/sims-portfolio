@@ -61,11 +61,11 @@ function saveVolume(v) {
   }
 }
 
-export function createRadio(parent, data) {
+export function createRadio(parent, data, onPlay) {
   if (!data || !data.show || !data.url) return null;
 
   // ---------- Внешний вид ----------
-  const root = el('div', 'radio idle');
+  const root = el('div', 'radio idle skin-frame small');
   root.setAttribute('role', 'region');
   root.setAttribute('aria-label', data.station);
 
@@ -73,7 +73,7 @@ export function createRadio(parent, data) {
   playBtn.appendChild(el('span', 'radio-icon play'));
   playBtn.appendChild(el('span', 'radio-label', data.title));
 
-  const info = el('div', 'radio-info');
+  const info = el('div', 'radio-info skin-well');
   const station = el('div', 'radio-station', data.station);
   const titleBox = el('div', 'radio-title-box');
   const title = el('a', 'radio-title', data.tuning);
@@ -189,6 +189,7 @@ export function createRadio(parent, data) {
             playing = true;
             started = true;
             setState('playing');
+            onPlay?.();
             widget.setVolume(Number(volume.value));
             showCurrent();
           });

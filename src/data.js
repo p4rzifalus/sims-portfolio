@@ -64,7 +64,7 @@ export const lighting = {
 
 // ---------- Эффект «как на PS1» ----------
 export const ps1 = {
-  enabledAtStart: true, // включён ли эффект при открытии сайта
+  enabledAtStart: false, // включён ли эффект при открытии сайта
   renderHeight: 480, // высота картинки в пикселях (меньше = крупнее пиксели); было 320 — соня выходила слишком грубой
   vertexSnap: 960, // дрожание вершин: сколько «ступенек» на высоту экрана (БОЛЬШЕ = слабее дрожит; 0 — без дрожания). Пробовали 160 и 240, сейчас в 4 раза слабее 240
   // Дрожание у персонажей: 0 — без дрожания, 2 — вдвое слабее комнаты, 1 — как у комнаты.
@@ -125,23 +125,39 @@ export const characters = [
       { place: 'британка', role: 'препод дисциплины «нейросети»' },
       { place: 'центральный университет', role: 'препод дисциплины «дизайн и разработка с ИИ»' },
     ],
-    // пара слов: текст от лица персонажа в правом блоке нижней панели, по абзацу на строку
-    note: [
-      'привет, ребята!! рада с вами познакомиться)',
-      'немного моих мыслей о курсе:',
-      '1. мы тут, чтобы приколить! в жизни и так полно обязательств, на занятиях попробуйте реализовать то, что просто будет вас радовать',
-      '2. в комьюнити развиваться круче, чем в соло',
-      '3. в начале пути здорово поискать, что можно переложить на ИИ, но потом с такой же тщательностью надо подумать, а что сохранить себе. это тоже можно сделать в приятной обстановке с одногруппниками!! расслабленно и приятно',
+    tasks: [
+      { id: 'radio', label: 'включить радио' },
+      { id: 'dance', label: 'потанцевать с пашей' },
+      { id: 'poster', label: 'полюбоваться на плакат на стене' },
+      { id: 'works', label: 'посмотреть работы' },
     ],
     about:
       'здесь будет короткий рассказ о первом человеке: чем занимается, что любит, как с ним работать.',
     works: [
-      { title: 'работа 1', description: 'короткое описание', image: '', url: '' },
-      { title: 'работа 2', description: 'короткое описание', image: '', url: '' },
-      { title: 'работа 3', description: 'короткое описание', image: '', url: '' },
-      { title: 'работа 4', description: 'короткое описание', image: '', url: '' },
-      { title: 'работа 5', description: 'короткое описание', image: '', url: '' },
-      { title: 'работа 6', description: 'короткое описание', image: '', url: '' },
+      {
+        title: 'ПИН тулз',
+        image: 'images/works/pin-tools.png',
+        description: 'сайт с вайбкод проектами моих студентов и меня',
+        url: 'https://surmsonya.github.io/toolsstudents/',
+      },
+      {
+        title: 'ПИН бот',
+        image: 'images/works/pin-bot.png',
+        description: 'обучающий тг бот-тамагочи с более 50 авторскими заданиями, направленными на введение ии в рутину',
+        url: 'https://t.me/pin_sholotch_bot',
+      },
+      {
+        title: 'G8 кухня айдентики',
+        image: 'images/works/g8.png',
+        description: 'инструмент со встроенным gpt image для выступления на конференции G8',
+        url: 'https://g8-sholotch.vercel.app',
+      },
+      {
+        title: 'комикс «Записки о дедушке»',
+        image: 'images/works/grandpa.png',
+        description: 'жизнь кроме нейросетей. 36 полос авторского комикса про деменцию',
+        url: 'https://grandpa-notes.netlify.app',
+      },
     ],
     links: [
       { label: 'telegram', url: 'https://example.com' },
@@ -168,14 +184,38 @@ export const characters = [
       { place: 'aic', role: 'ex-ведущий дизайнер' },
       { place: 'duo sapiens', role: 'ментор' },
     ],
-    note: ['паша прив как тебе такая идея? не хочешь вставить сюда какой-нибудь свой текст? у тебя много хороших!'],
+    tasks: [
+      { id: 'sofa', label: 'посидеть на диване' },
+      { id: 'works', label: 'посмотреть работы' },
+      { id: 'book', label: 'взять книгу из шкафа' },
+    ],
     about:
       'здесь будет короткий рассказ о втором человеке: чем занимается, что любит, как с ним работать.',
     works: [
-      { title: 'работа 1', description: 'короткое описание', image: '', url: '' },
-      { title: 'работа 2', description: 'короткое описание', image: '', url: '' },
-      { title: 'работа 3', description: 'короткое описание', image: '', url: '' },
-      { title: 'работа 4', description: 'короткое описание', image: '', url: '' },
+      {
+        title: 'cozy portfolio',
+        description: '3D комната Паши, в которой можно ознакомиться с его проектами',
+        image: 'images/works/cozy-portfolio.png',
+        url: 'https://p4rzifalus.github.io/cozy-portfolio/',
+      },
+      {
+        title: 'jacks-lantern',
+        description: 'игра, где пользователь выращивает урожай на летающем острове',
+        image: 'images/works/jacks-lantern.png',
+        url: 'https://p4rzifalus.github.io/jacks-lantern/',
+      },
+      {
+        title: 'hud/generator',
+        description: 'дизайн-инструмент, обрабатывающий фото, видео и данные с камеры в технической эстетике',
+        image: 'images/works/hud-generator.png',
+        url: 'https://p4rzifalus.github.io/hud-dossier/',
+      },
+      {
+        title: 'cyber sigil',
+        description: 'дизайн-инструмент для создания svg узоров',
+        image: 'images/works/cyber-sigil.png',
+        url: 'https://p4rzifalus.github.io/03-cyber-sigil/',
+      },
     ],
     links: [
       { label: 'github', url: 'https://example.com' },
@@ -190,7 +230,7 @@ export const characters = [
 // Данные лежат у каждого персонажа: needs, interests, jobs, note.
 export const dossier = {
   jobsTitle: 'работа', // заголовок блока с работой
-  noteTitle: 'пара слов', // заголовок блока с текстом от лица персонажа
+  noteTitle: 'задания', // заголовок блока с текстом от лица персонажа
   // Вкладки блока потребностей. Первая открыта при загрузке. Пока вкладка одна, значков-переключателей нет.
   tabs: [
     { id: 'needs', icon: '🍎', label: 'потребности' },
@@ -243,15 +283,6 @@ export const social = {
       targetAnimation: 'talk', // …и того, с кем взаимодействуют
     },
     {
-      id: 'tickle',
-      label: 'пощекотать',
-      icon: '🤭',
-      banner: '{actor} щекочет {target.acc}, а {target} хохочет',
-      actorStatus: 'щекочет',
-      targetStatus: 'хохочет',
-      targetAnimation: 'laugh', // движения пока нет — бэклог
-    },
-    {
       id: 'dance',
       label: 'потанцевать',
       icon: '🕺',
@@ -260,20 +291,6 @@ export const social = {
       targetStatus: 'танцует',
       actorAnimation: 'dance',
       targetAnimation: 'dance',
-    },
-    {
-      id: 'gift',
-      label: 'сделать подарок',
-      icon: '🎁',
-      banner: '{actor} дарит {target.dat} фигурку {gift}',
-      actorStatus: 'дарит подарок',
-      targetStatus: 'получает подарок',
-      choices: [
-        { id: 'claude', label: 'claude', icon: '✳️' },
-        { id: 'gpt', label: 'gpt', icon: '🌀' },
-        { id: 'grok', label: 'grok', icon: '✖️' },
-        { id: 'gemini', label: 'gemini', icon: '✨' },
-      ],
     },
     { id: 'select', label: 'выбрать', icon: '👆', select: true },
   ],
@@ -376,10 +393,12 @@ export const furniture = [
     blocks: false,
     facing: 'south',
     screen: 'design', // что на экране: 'design' (макет) или 'code' (код)
+    owner: 'p1',
     actions: [
       {
         id: 'show-works',
-        label: 'показать работы',
+        label: 'показать работы сони',
+        who: 'target',
         icon: '🖼️',
         goTo: [3, 2], // клетка позади стула
         face: 'north',
@@ -401,10 +420,12 @@ export const furniture = [
     blocks: false,
     facing: 'south',
     screen: 'code',
+    owner: 'p2',
     actions: [
       {
         id: 'show-works',
-        label: 'показать работы',
+        label: 'показать работы паши',
+        who: 'target',
         icon: '🖼️',
         goTo: [5, 2],
         face: 'north',

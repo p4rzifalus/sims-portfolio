@@ -15,7 +15,7 @@ export function createUI({ characters, texts, dossier, onSelect, onCancel }) {
   const root = document.getElementById('ui');
 
   // ---------- Колонка портретов ----------
-  const column = el('div', 'portraits');
+  const column = el('div', 'portraits skin-frame');
   const portraitButtons = {};
   for (const ch of characters) {
     const b = el('button', 'portrait');
@@ -32,14 +32,14 @@ export function createUI({ characters, texts, dossier, onSelect, onCancel }) {
   // ---------- Нижняя панель ----------
   const panel = el('div', 'hud');
   panel.innerHTML = `
-    <div class="hud-block hud-me">
+    <div class="hud-block hud-me skin-frame velvet">
       <div class="hud-name"></div>
       <div class="hud-me-row">
         <div class="hud-portrait"><img alt=""></div>
         <div class="hud-action-col">
-          <div class="hud-action">
+          <div class="hud-action skin-well">
             <span class="icon"></span>
-            <button class="cancel" type="button"></button>
+            <button class="cancel skin-close" type="button"></button>
           </div>
           <div class="hud-action-label"></div>
         </div>
@@ -48,20 +48,20 @@ export function createUI({ characters, texts, dossier, onSelect, onCancel }) {
       <div class="hud-clock"><span class="date"></span><span class="time"></span></div>
     </div>
     <div class="hud-mtabs"></div>
-    <div class="hud-block hud-side">
+    <div class="hud-block hud-side skin-frame">
       <div class="side-tabs"></div>
       <div class="side-content">
         <div class="hud-title side-title"></div>
         <div class="side-body"></div>
       </div>
     </div>
-    <div class="hud-block hud-work">
+    <div class="hud-block hud-work skin-frame">
       <div class="hud-title"></div>
-      <div class="hud-well jobs"></div>
+      <div class="hud-well jobs skin-scroll"></div>
     </div>
-    <div class="hud-block hud-note">
+    <div class="hud-block hud-note skin-frame">
       <div class="hud-title"></div>
-      <div class="hud-well note-text"></div>
+      <div class="hud-well note-text skin-well skin-scroll"></div>
     </div>`;
   root.appendChild(panel);
 
@@ -112,7 +112,7 @@ export function createUI({ characters, texts, dossier, onSelect, onCancel }) {
 
   // ---------- Подсказка ----------
   // Мышью — при наведении, пальцем — по нажатию (повторное нажатие или нажатие мимо прячет).
-  const tip = el('div', 'hud-tip');
+  const tip = el('div', 'hud-tip skin-frame small');
   root.appendChild(tip);
   let tipOwner = null;
 
@@ -158,7 +158,7 @@ export function createUI({ characters, texts, dossier, onSelect, onCancel }) {
   let tab = dossier.tabs[0].id; // открытая вкладка не меняется при смене персонажа
   const tabButtons = {};
   for (const t of dossier.tabs) {
-    const b = el('button', 'side-tab', t.icon);
+    const b = el('button', 'side-tab skin-round', t.icon);
     b.type = 'button';
     b.setAttribute('aria-label', t.label);
     withTip(b, t.label);
@@ -183,9 +183,9 @@ export function createUI({ characters, texts, dossier, onSelect, onCancel }) {
         const k = Math.max(0, Math.min(1, ((d.needs && d.needs[n.id]) || 0) / dossier.needsMax));
         const item = el('div', 'need');
         item.appendChild(el('div', 'need-label', n.label));
-        const bar = el('div', 'need-bar');
-        const fill = el('span', `need-fill ${level(k)}`);
-        fill.style.width = `${k * 100}%`;
+        const bar = el('div', 'need-bar skin-bar');
+        const fill = el('span', `need-fill skin-bar-fill ${level(k)}`);
+        fill.style.setProperty('--p', k); // доля заполнения, ширину считает CSS (.skin-bar-fill)
         bar.appendChild(fill);
         item.appendChild(bar);
         grid.appendChild(item);
@@ -203,7 +203,7 @@ export function createUI({ characters, texts, dossier, onSelect, onCancel }) {
   function renderDossier(d) {
     interestsEl.replaceChildren(
       ...(d.interests || []).map((it) => {
-        const b = el('button', 'interest', it.icon);
+        const b = el('button', 'interest skin-round', it.icon);
         b.type = 'button';
         b.setAttribute('aria-label', it.label);
         return withTip(b, it.label, it.description);
@@ -211,15 +211,17 @@ export function createUI({ characters, texts, dossier, onSelect, onCancel }) {
     );
     jobsEl.replaceChildren(
       ...(d.jobs || []).map((j) => {
-        const item = el('div', 'job');
+        const item = el('div', 'job skin-well');
         item.appendChild(el('div', 'job-place', j.place));
         item.appendChild(el('div', 'job-role', j.role));
         return item;
       }),
     );
-    // «пара слов»: строка или список абзацев
-    const note = Array.isArray(d.note) ? d.note : d.note ? [d.note] : [];
-    noteEl.replaceChildren(...note.map((line) => el('p', '', line)));
+    noteEl.replaceChildren(...(d.tasks || []).map((task) => {
+      const line = el('p', task.done ? 'task done' : 'task');
+      line.append(el('span', 'task-check', task.done ? '✓' : '○'), el('span', '', task.label));
+      return line;
+    }));
     noteEl.scrollTop = 0;
     renderSide();
   }
@@ -238,6 +240,10 @@ export function createUI({ characters, texts, dossier, onSelect, onCancel }) {
   setInterval(tickClock, 1000);
 
   return {
+    refresh() {
+      if (selectedData) renderDossier(selectedData);
+    },
+
     setPortrait(id, url) {
       portraits[id] = url;
       portraitButtons[id].querySelector('img').src = url;

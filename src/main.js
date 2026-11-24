@@ -4,6 +4,11 @@ import '@fontsource/inter/cyrillic-600.css';
 import '@fontsource/inter/latin-600.css';
 import '@fontsource/inter/cyrillic-700.css';
 import '@fontsource/inter/latin-700.css';
+// заголовки нового интерфейса (этап 20) — антиква с кириллицей, только жирная
+import '@fontsource/old-standard-tt/cyrillic-700.css';
+import '@fontsource/old-standard-tt/latin-700.css';
+// набор деталей интерфейса: картинки и переменные --ui-* (собирает tools/ui/slice.mjs)
+import './ui/kit.css';
 import * as THREE from 'three';
 import {
   room,
@@ -274,35 +279,24 @@ scene.add(debug.group);
 debug.setVisible(false);
 
 // ---------- Интерфейс ----------
-const ps1Button = document.getElementById('ps1-toggle');
 function setPS1(on) {
   ps1On = on;
   ps1Uniforms.uSnapOn.value = on && ps1.vertexSnap > 0 ? 1 : 0; // vertexSnap: 0 — без дрожания
   pass.setMode(on);
-  ps1Button.textContent = on ? ui.ps1On : ui.ps1Off;
-  ps1Button.classList.toggle('off', !on);
   resize();
 }
-ps1Button.addEventListener('click', () => setPS1(!ps1On));
 
 document.title = ui.pageTitle;
-const debugHint = document.getElementById('debug-hint');
-debugHint.textContent = ui.gridHint;
-function toggleDebug() {
-  debug.toggle();
-  debugHint.classList.toggle('active', debug.visible);
-}
-debugHint.addEventListener('click', toggleDebug);
 window.addEventListener('keydown', (e) => {
-  if (e.code === 'KeyG' && !e.repeat) toggleDebug();
+  if (e.code === 'KeyG' && !e.repeat) debug.toggle();
 });
 
 window.addEventListener('resize', resize);
 setPS1(ps1On);
 
-// Радио — первым в правом верхнем углу, над кнопками PS1 и сетки.
+// Радио в правом верхнем углу.
 const corner = document.getElementById('corner');
-const radio = createRadio(corner, radioData);
+const radio = createRadio(corner, radioData, () => completeTask('p1', 'radio'));
 // Письмо и баннер встают под угол с кнопками — его высота меняется, когда радио раскрывается.
 function updateCornerBottom() {
   document.documentElement.style.setProperty('--corner-bottom', `${Math.round(corner.getBoundingClientRect().bottom)}px`);
@@ -342,13 +336,34 @@ window.addEventListener('keydown', (e) => {
 // Куда «смотрит зритель»: к нему персонаж поворачивается, чтобы помахать.
 const cameraYaw = Math.atan2(camDir.x, camDir.z);
 
+function completeTask(characterId, taskId) {
+  const data = characterData.find((ch) => ch.id === characterId);
+  const task = data?.tasks?.find((entry) => entry.id === taskId);
+  if (!task || task.done) return;
+  task.done = true;
+  if (data.tasks.every((entry) => entry.done)) {
+    for (const need of dossier.needs) data.needs[need.id] = dossier.needsMax;
+  }
+  hud.refresh();
+}
+
 function startAction(actor, action, extra) {
-  performAction({ actor, action, furniture, occupancy, panels, cameraYaw, ...extra });
+  const onReached = () => {
+    if (action.panel === 'works') completeTask(actor.id, 'works');
+    if (extra?.item?.id === 'sofa' && action.id === 'work') completeTask(actor.id, 'sofa');
+    if (extra?.item?.id === 'bookcase' && action.id === 'read') completeTask(actor.id, 'book');
+  };
+  performAction({ actor, action, furniture, occupancy, panels, cameraYaw, onReached, ...extra });
 }
 
 function startSocial(actor, target, action, choice) {
   performSocial({
     actor, target, action, choice, grid, banners, getPortrait: (id) => portraits[id], duration: social.duration,
+    onCompleted: () => {
+      if (action.id === 'dance' && [actor.id, target.id].includes('p1') && [actor.id, target.id].includes('p2')) {
+        completeTask('p1', 'dance');
+      }
+    },
   });
 }
 
@@ -422,12 +437,12 @@ function updateHover() {
 }
 
 // Открыть радиальное меню у курсора.
-function openMenu(e, items, onPick) {
+function openMenu(e, items, onPick, portraitOwner = selected) {
   menu.open({
     x: e.clientX,
     y: e.clientY,
-    portrait: portraits[selected.id],
-    accent: selected.data.color,
+    portrait: portraits[portraitOwner.id],
+    accent: portraitOwner.data.color,
     items,
     onPick,
     onClose: () => updateHover(),
@@ -447,7 +462,7 @@ canvas.addEventListener('pointerdown', (e) => {
   if (!target) return;
 
   // Персонаж: уже выбранный — меню «помахать / о себе»;
-  // второй — меню взаимодействий (поговорить, пощекотать… и «выбрать»).
+  // второй — меню взаимодействий (поговорить, потанцевать и «выбрать»).
   if (target.type === 'character') {
     const ch = target.character;
     const actor = selected;
@@ -472,10 +487,12 @@ canvas.addEventListener('pointerdown', (e) => {
     const actor = selected;
     if (item.closeUp) {
       openCloseUp(item);
+      if (item.id === 'poster' && actor.id === 'p1') completeTask('p1', 'poster');
       return;
     }
     const items = item.actions.map((a) => ({ ...a, disabled: !freeSpot(a, item, occupancy, actor) }));
-    openMenu(e, items, (action) => startAction(actor, action, { item }));
+    const owner = characters.find((ch) => ch.id === item.owner);
+    openMenu(e, items, (action) => startAction(actor, action, { item, target: owner }), owner || actor);
     return;
   }
 
