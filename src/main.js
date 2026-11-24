@@ -19,6 +19,7 @@ import {
   dossier,
   radio as radioData,
   lighting,
+  camera as cameraData,
 } from './data.js';
 import { typoDeep } from './typo.js';
 import { buildRoom } from './room.js';
@@ -129,14 +130,63 @@ function boxCorners(box) {
 // Вся комната целиком (обычный вид).
 const roomQuat = camera.quaternion.clone();
 const roomBox = new THREE.Box3(new THREE.Vector3(-0.15, -0.3, -0.15), new THREE.Vector3(room.columns + 0.15, room.wallHeight, room.rows + 0.15));
-function roomShot(aspect) {
-  if (!MOBILE.matches) return makeShot(target, roomQuat, boxCorners(roomBox), SCREEN_MARGINS, aspect);
-  // На телефоне свободная часть экрана — между портретами сверху и панелью снизу.
+// Свободная часть экрана (доли): на компьютере — SCREEN_MARGINS, на телефоне —
+// между портретами сверху и панелью снизу.
+function freeMargins() {
+  if (!MOBILE.matches) return SCREEN_MARGINS;
   const h = window.innerHeight;
   const top = document.querySelector('.portraits')?.getBoundingClientRect().bottom ?? 0;
   const hud = document.querySelector('.hud')?.getBoundingClientRect().height ?? h * 0.35;
-  const margins = { left: 0, right: 0, top: (top + 8) / h, bottom: (hud + 18) / h };
-  return makeShot(target, roomQuat, boxCorners(roomBox), margins, aspect, MOBILE_ZOOM);
+  return { left: 0, right: 0, top: (top + 8) / h, bottom: (hud + 18) / h };
+}
+function roomShot(aspect) {
+  return makeShot(target, roomQuat, boxCorners(roomBox), freeMargins(), aspect, MOBILE.matches ? MOBILE_ZOOM : 1);
+}
+
+// Камера за персонажем: окно в zoom раз меньше комнаты (по высоте), той же формы,
+// что свободная часть экрана, с центром на followPoint; окно не выходит за комнату —
+// у стены камера останавливается. Всё — в плоскости экрана (x вправо, y вверх).
+const roomQuatInv = roomQuat.clone().invert();
+const roomExtent = (() => {
+  const e = { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity };
+  for (const c of boxCorners(roomBox)) {
+    const v = c.clone().sub(target).applyQuaternion(roomQuatInv);
+    e.minX = Math.min(e.minX, v.x); e.maxX = Math.max(e.maxX, v.x);
+    e.minY = Math.min(e.minY, v.y); e.maxY = Math.max(e.maxY, v.y);
+  }
+  return e;
+})();
+const followPoint = new THREE.Vector3(); // куда смотрит камера (плавно догоняет персонажа)
+let followReady = false;
+const following = () => Boolean(cameraData?.follow);
+function followShot(aspect) {
+  const m = freeMargins();
+  const e = roomExtent;
+  const zoom = (MOBILE.matches ? cameraData.mobileZoom : cameraData.zoom) || 1;
+  const h = (e.maxY - e.minY) / zoom;
+  const w = h * ((aspect * (1 - m.left - m.right)) / (1 - m.top - m.bottom));
+  const p = followPoint.clone().sub(target).applyQuaternion(roomQuatInv);
+  const fit = (v, lo, hi, size) => (size >= hi - lo ? (lo + hi) / 2 : THREE.MathUtils.clamp(v, lo + size / 2, hi - size / 2));
+  const cx = fit(p.x, e.minX, e.maxX, w), cy = fit(p.y, e.minY, e.maxY, h);
+  const corners = [[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([sx, sy]) =>
+    new THREE.Vector3(cx + (sx * w) / 2, cy + (sy * h) / 2, 0).applyQuaternion(roomQuat).add(target));
+  return makeShot(target, roomQuat, corners, m, aspect);
+}
+// Обычный вид: за персонажем или вся комната.
+function viewShot(aspect) {
+  return following() && followReady ? followShot(aspect) : roomShot(aspect);
+}
+// Точка над выбранным персонажем (на уровне груди), к ней плавно едет followPoint.
+function updateFollow(dt) {
+  if (!following() || !selected) return;
+  const goal = selected.root.position.clone();
+  goal.y += 0.8;
+  if (!followReady) {
+    followPoint.copy(goal);
+    followReady = true;
+    return;
+  }
+  followPoint.lerp(goal, 1 - Math.exp(-dt * (cameraData.speed || 3)));
 }
 
 // Предмет на стене прямо перед камерой: камера смотрит перпендикулярно стене.
@@ -157,7 +207,7 @@ function currentAspect() {
 }
 function refreshShots() {
   const aspect = currentAspect();
-  const target = cam.closeUp ? closeUpShot(cam.closeUp, aspect) : roomShot(aspect);
+  const target = cam.closeUp ? closeUpShot(cam.closeUp, aspect) : viewShot(aspect);
   if (!cam.to || cam.t >= CLOSEUP_TIME) cam.from = target; // не в пути — просто встать в кадр
   cam.to = target;
 }
@@ -464,7 +514,7 @@ function moveCamera(closeUp) {
     quat: camera.quaternion.clone(),
     frame: { left: camera.left, right: camera.right, top: camera.top, bottom: camera.bottom },
   };
-  cam.to = closeUp ? closeUpShot(closeUp, currentAspect()) : roomShot(currentAspect());
+  cam.to = closeUp ? closeUpShot(closeUp, currentAspect()) : viewShot(currentAspect());
   cam.t = 0;
   document.body.classList.toggle('closeup', Boolean(closeUp));
 }
@@ -509,6 +559,11 @@ function frame() {
   flickerLamps(t);
   if (debug.visible && selected) debug.setPath([selected.position, ...selected.path]);
   cam.t += dt;
+  // За персонажем: пока камера не едет к стене и обратно, кадр каждый раз новый.
+  updateFollow(dt);
+  if (following() && followReady && !cam.closeUp && cam.t >= CLOSEUP_TIME) {
+    cam.from = cam.to = followShot(currentAspect());
+  }
   const k = placeCamera(t);
   // Крупным планом персонажи не загораживают плакат: пока камера у стены, их не видно.
   const atWall = cam.closeUp ? k > 0.5 : k < 0.5;
