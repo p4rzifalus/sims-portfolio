@@ -295,13 +295,16 @@ async function build() {
         const pad = kit.pad;
         const off = g ? [sy, sx, sy, sx] : [dy, dx, dy, dx];
         const out = [t, rr, bb, l].map((v, i) => Math.round((v + off[i] + pad) * k));
-        css.push(`  --ui-${name}-slice: ${out.join(' ')};`, `  --ui-${name}-w: ${out.map((v) => +(v / D).toFixed(1) + 'px').join(' ')};`);
+        const px = out.map((v) => +(v / D).toFixed(1) + 'px');
+        css.push(`  --ui-${name}-slice: ${out.join(' ')};`, `  --ui-${name}-w: ${px.join(' ')};`);
+        // каждый край отдельно — чтобы в CSS умножать толщину рамки (calc(var(--k) * …))
+        ['t', 'r', 'b', 'l'].forEach((side, i) => css.push(`  --ui-${name}-w${side}: ${px[i]};`));
       }
     }
   }
   fs.writeFileSync(
     path.join(OUT, 'kit.css'),
-    `/* Собрано tools/ui/slice.mjs из листов ui-src/kit/1-sheets — не править руками.\n   --ui-<имя> — картинка, -size — её размер на экране, -slice / -w — нарезка рамки (border-image). */\n:root {\n${css.join('\n')}\n}\n`,
+    `/* Собрано tools/ui/slice.mjs из листов ui-src/kit/1-sheets — не править руками.\n   --ui-<имя> — картинка, -size — её размер на экране, -slice / -w — нарезка рамки (border-image),\n   -wt / -wr / -wb / -wl — толщина каждого края отдельно. */\n:root {\n${css.join('\n')}\n}\n`,
   );
   console.log(report.join('\n'));
   console.log(`всего: ${total} КБ`);

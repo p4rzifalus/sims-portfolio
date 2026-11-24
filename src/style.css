@@ -102,6 +102,189 @@ textarea {
   filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.9));
 }
 
+/* ---------- Стиль «готика особняка + кости» (этап 20) ----------
+   Картинки и их размеры — переменные --ui-* из src/ui/kit.css (собирает tools/ui/slice.mjs
+   из листов gpt-image). Цвета нового стиля — переменные --g-*. Новые элементы собирать из
+   классов ниже: .skin-frame (рамка), .skin-well (утопленный экранчик), .skin-bar (шкала),
+   .skin-round / .skin-close (круглые кнопки), .skin-title (заголовок антиквой).
+   Старые --chrome* / --blue-* остаются, пока на них портреты, меню, панели и радио (20.3–20.5). */
+:root {
+  --g-ink: #dccab0; /* основной текст на дереве */
+  --g-ink-dim: #a08a6c; /* подписи, второстепенное */
+  --g-title: #ecdcbc; /* заголовки антиквой */
+  --g-ember: #f0c88a; /* тлеющие цифры (часы) */
+  --g-ember-glow: rgba(255, 140, 40, 0.6);
+  --g-shadow: 0 6px 14px rgba(0, 0, 0, 0.55);
+}
+
+/* Заголовок антиквой: без пиксельного блика 5by7, светлая кость с тенью */
+.skin-title,
+.hud .hud-title,
+.hud .hud-name,
+#ui .hud-tip-title {
+  font-family: 'Old Standard TT', serif;
+  font-weight: 700;
+  font-size: 22px;
+  letter-spacing: 0;
+  line-height: 1.1;
+  color: var(--g-title);
+  background: none;
+  -webkit-background-clip: border-box;
+  background-clip: border-box;
+  filter: none;
+  text-shadow: 0 2px 2px rgba(0, 0, 0, 0.85);
+}
+
+/* Рамка из 9 кусков. Дерево (или бархат) — фоном элемента внутри прозрачной кромки
+   (--inset): так оно не вылезает за скошенные углы рамки. Сама рамка — на ::after поверх
+   (border-image), клики сквозь неё проходят. --k — толщина рамки (1 — как нарисована).
+   ::before свободен (у блоков нижней панели на нём скоба-перемычка).
+   Позиционирование (relative / fixed / absolute) задаёт сам элемент. */
+.skin-frame {
+  --skin: var(--ui-frame);
+  --slice: var(--ui-frame-slice);
+  --bw: var(--ui-frame-w);
+  --fill: var(--ui-wood);
+  --inset: 12px;
+  --k: 1;
+  box-sizing: border-box;
+  border: var(--inset) solid transparent;
+  background: var(--fill) 0 0 / var(--ui-wood-size) padding-box;
+  box-shadow: none;
+  border-radius: 0;
+  filter: drop-shadow(var(--g-shadow));
+}
+.skin-frame.velvet {
+  --skin: var(--ui-frame-velvet);
+  --fill: var(--ui-velvet);
+}
+.skin-frame.small {
+  --skin: var(--ui-frame-small);
+  --slice: var(--ui-frame-small-slice);
+  --bw: var(--ui-frame-small-w);
+  --inset: 6px;
+}
+.skin-frame::after {
+  content: '';
+  position: absolute;
+  inset: calc(-1 * var(--inset));
+  box-sizing: border-box;
+  pointer-events: none;
+  border-style: solid;
+  border-width: var(--bw);
+  border-image-source: var(--skin);
+  border-image-slice: var(--slice);
+  border-image-width: var(--k);
+}
+
+/* Утопленный тёмный экранчик (часы, строки работ, «пара слов») */
+.skin-well {
+  --k: 1;
+  box-sizing: border-box;
+  border-style: solid;
+  border-width: calc(var(--k) * var(--ui-well-wt)) calc(var(--k) * var(--ui-well-wr))
+    calc(var(--k) * var(--ui-well-wb)) calc(var(--k) * var(--ui-well-wl));
+  border-image: var(--ui-well) var(--ui-well-slice) fill;
+  background: none;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+/* Шкала: желобок — картинка, заливка (.skin-bar-fill) — цветом по заполненности.
+   Заливка лежит в канавке желобка: от края картинки до канавки 11 px (при --k 1), у торцов —
+   железные набалдашники. Доля заполнения — переменная --p (0…1) у заливки. */
+.skin-bar {
+  --k: 1;
+  position: relative;
+  box-sizing: border-box;
+  height: calc(22.5px * var(--k));
+  border-style: solid;
+  border-width: 0 calc(var(--k) * var(--ui-bar-wr)) 0 calc(var(--k) * var(--ui-bar-wl));
+  border-image: var(--ui-bar) var(--ui-bar-slice) fill;
+  background: none;
+  box-shadow: none;
+  border-radius: 0;
+  overflow: visible;
+}
+.skin-bar-fill {
+  --edge: calc(var(--k) * (var(--ui-bar-wl) - 11px)); /* от канавки до внутреннего края рамки */
+  position: absolute;
+  left: calc(-1 * var(--edge));
+  top: calc(6px * var(--k));
+  bottom: calc(6px * var(--k));
+  width: calc((100% + 2 * var(--edge)) * var(--p, 0));
+  border-radius: 6px;
+  box-shadow: inset 0 2px 1px rgba(255, 255, 255, 0.3), inset 0 -2px 2px rgba(0, 0, 0, 0.4), 0 0 6px var(--glow, transparent);
+}
+
+/* Круглые кнопки: деревянный диск в железе (.skin-round) и железный с черепком (.skin-close).
+   Наведение и нажатие — свет поверх той же картинки (gpt-image рисует каждое состояние
+   заново, чуть другой формы, — при подмене картинки кнопка дёргалась). */
+.skin-round,
+.skin-close {
+  position: relative;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--ui-round) center / 100% 100% no-repeat;
+  box-shadow: none;
+  color: inherit;
+  cursor: pointer;
+  transition: filter 0.12s ease-out;
+}
+.skin-close {
+  background-image: var(--ui-close);
+  font-size: 0; /* значок — сам черепок, текст «✕» только для экранного диктора */
+}
+.skin-round::after,
+.skin-close::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0;
+  mix-blend-mode: screen;
+  background: radial-gradient(45% 40% at 50% 78%, rgba(255, 140, 50, 0.6), rgba(255, 90, 20, 0.2) 60%, transparent);
+  transition: opacity 0.12s ease-out;
+}
+.skin-round:hover:not(:disabled),
+.skin-close:hover:not(:disabled) {
+  filter: brightness(1.15) drop-shadow(0 0 5px rgba(255, 110, 30, 0.55));
+}
+.skin-round:hover:not(:disabled)::after,
+.skin-close:hover:not(:disabled)::after {
+  opacity: 1;
+}
+.skin-round:active:not(:disabled),
+.skin-close:active:not(:disabled) {
+  filter: brightness(0.85) drop-shadow(0 0 2px rgba(255, 110, 30, 0.4));
+}
+.skin-round:active:not(:disabled)::after,
+.skin-close:active:not(:disabled)::after {
+  opacity: 0.5;
+}
+
+/* Полоса прокрутки: железный желобок и костяной бегунок (Chrome, Safari);
+   в Firefox таких картинок нет — там просто тёмные цвета. */
+.skin-scroll::-webkit-scrollbar {
+  width: 12px;
+}
+.skin-scroll::-webkit-scrollbar-track {
+  border-style: solid;
+  border-width: 10px 0;
+  border-image: var(--ui-scroll-track) var(--ui-scroll-track-slice) fill / 10px 0 stretch;
+}
+.skin-scroll::-webkit-scrollbar-thumb {
+  background: var(--ui-scroll-thumb) center / 9px 100% no-repeat;
+}
+@supports not selector(::-webkit-scrollbar) {
+  .skin-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: #c9b48f #1c130e;
+  }
+}
+
 #app,
 #app canvas {
   position: fixed;
@@ -488,12 +671,11 @@ textarea {
 }
 
 /* ---------- Нижняя панель ----------
-   Три блока по мотивам The Sims 2: портрет (выше остальных), работа и правый блок
-   с вкладками. Блоки соединены перемычками — панель обтекает содержимое. */
+   Четыре блока по мотивам The Sims 2: карточка персонажа (бархат, выше остальных),
+   потребности, работа и «пара слов» (тоже высокий). Блоки — деревянные рамки с железными
+   углами (.skin-frame), между ними железные скобы. Стиль — «готика особняка + кости». */
 .hud {
   --accent: #fff;
-  --hud-line: var(--chrome-edge); /* обводка */
-  --hud-ink: var(--chrome-ink); /* текст */
   position: absolute;
   left: 8px;
   right: 8px; /* всегда во всю ширину: блоки растягиваются, см. flex у каждого */
@@ -501,161 +683,164 @@ textarea {
   display: flex;
   align-items: flex-end;
   gap: 10px;
-  color: var(--hud-ink);
+  color: var(--g-ink);
   transform-origin: left bottom;
-  isolation: isolate; /* перемычки (z-index: -1) рисуются под блоками, но над сценой */
+  isolation: isolate;
 }
 .hud-block {
   position: relative;
-  box-sizing: border-box;
-  padding: 10px 12px;
-  border-radius: 22px;
-  border: 2px solid var(--hud-line);
-  background: var(--chrome);
-  box-shadow: var(--chrome-shadow);
+  --k: 0.8; /* рамки панели чуть тоньше нарисованных */
+  padding: 8px 16px 10px;
 }
-/* Перемычка к предыдущему блоку */
+/* Железная скоба к предыдущему блоку — поверх стыка двух рамок */
 .hud-block ~ .hud-block::before {
   content: '';
   position: absolute;
-  left: -14px;
-  width: 16px;
-  top: 34%;
-  height: 32%;
-  border: 2px solid var(--hud-line);
-  border-left: 0;
-  border-right: 0;
-  background: var(--chrome-band);
-  z-index: -1;
+  z-index: 1;
+  left: -38px;
+  top: calc(50% - 11px);
+  width: 49px;
+  height: 22px;
+  background: var(--ui-clamp) center / contain no-repeat;
+  pointer-events: none;
 }
 .hud-work,
 .hud-side {
-  height: 180px;
+  height: 200px;
 }
-.hud-title {
+.hud .hud-title {
   text-align: center;
   margin-bottom: 6px;
 }
 
-/* Блок с портретом */
+/* Карточка персонажа: имя; портрет в костяной рамке и слот действия; интересы и часы */
 .hud-me {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 8px 12px 10px;
-  border-radius: 28px 28px 22px 22px;
   flex: none;
+  height: 240px;
+  display: grid;
+  grid-template-columns: auto auto;
+  grid-template-areas:
+    'n n'
+    'r r'
+    'i c';
+  align-items: center;
+  justify-content: start;
+  gap: 2px 12px;
+  padding: 6px 18px 8px;
 }
-.hud-name {
-  --title-ink: var(--blue-a-edge);
+.hud .hud-name {
+  grid-area: n;
   white-space: nowrap;
+  padding-left: 4px;
 }
 .hud-me-row {
+  grid-area: r;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 10px;
 }
+/* Портрет под костяной рамкой: картинка в «окне» рамки, рамка — сверху на ::after */
 .hud-portrait {
-  width: 96px;
-  height: 96px;
+  position: relative;
+  width: 108px;
+  height: 108px;
   flex: none;
-  border-radius: 20px;
-  overflow: hidden;
-  border: 3px solid #fff;
-  box-shadow: 0 0 0 3px var(--accent), 0 0 0 5px var(--hud-line);
-  background: var(--blue-b);
+}
+/* окно в рамке — 17 % размера с каждой стороны (по рисунку костяной рамки) */
+#ui .hud-portrait img {
+  position: absolute;
+  left: 17%;
+  top: 17%;
+  width: 66%;
+  height: 66%;
+  background: #1a0808;
+}
+.hud-portrait::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--ui-portrait-frame) center / 100% 100% no-repeat;
+  pointer-events: none;
 }
 .hud-action-col {
-  width: 62px;
+  width: 70px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 5px;
-  padding-top: 8px;
+  gap: 6px;
 }
 .hud-action {
   position: relative;
-  width: 48px;
-  height: 48px;
-  border-radius: 14px;
+  width: 56px;
+  height: 56px;
   display: grid;
   place-items: center;
-  font-size: 26px;
-  background: var(--blue-b-raised);
-  border: 2px solid var(--blue-b-edge);
-  box-shadow: 0 3px 5px rgba(30, 30, 100, 0.3), inset 0 2px 0 #fff;
+  font-size: 28px;
+  --k: 0.55;
 }
 .hud-action.empty {
-  background: var(--blue-b);
-  border: 2px dashed rgba(255, 255, 255, 0.7);
-  box-shadow: var(--blue-b-inset);
+  opacity: 0.75;
 }
-.hud-action .cancel {
+.hud .hud-action .cancel {
   position: absolute;
-  top: -9px;
-  right: -9px;
-  width: 22px;
-  height: 22px;
-  padding: 0;
-  font-size: 11px;
+  top: -12px;
+  right: -14px;
+  width: 26px;
+  height: 26px;
 }
 .hud-action.empty .cancel {
   display: none;
 }
 .hud-action-label {
   font-size: 12px;
-  font-weight: bold;
   text-align: center;
   line-height: 1.15;
+  color: var(--g-ink-dim);
 }
 
-/* Интересы: значки под портретом */
+/* Интересы: круглые деревянные кнопки со значками */
 .hud-interests {
+  grid-area: i;
   display: flex;
-  gap: 6px;
+  gap: 4px;
 }
 .interest {
-  width: 34px;
-  height: 34px;
-  padding: 0;
+  width: 36px;
+  height: 36px;
   display: grid;
   place-items: center;
-  font-size: 18px;
-  border-radius: 11px;
-  border: 2px solid var(--blue-b-edge);
-  background: var(--blue-b-raised);
-  box-shadow: 0 2px 4px rgba(30, 30, 100, 0.3), inset 0 1px 0 #fff;
-  cursor: pointer;
-  transition: transform 0.12s;
-}
-.interest:hover {
-  transform: translateY(-2px);
+  font-size: 17px;
 }
 
+/* Часы: костяная табличка, тлеющие пиксельные цифры */
 .hud-clock {
+  grid-area: c;
   display: flex;
   align-items: baseline;
   justify-content: center;
-  gap: 8px;
-  padding: 3px 12px;
-  border-radius: 10px;
-  border: 2px solid var(--blue-b-edge);
-  background: var(--blue-b);
-  box-shadow: var(--blue-b-inset);
-  color: var(--blue-b-ink);
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.45);
+  gap: 7px;
+  padding: 0 4px;
+  height: 37px;
+  box-sizing: border-box;
+  border-style: solid;
+  border-width: var(--ui-clock-w);
+  border-image: var(--ui-clock) var(--ui-clock-slice) fill / var(--ui-clock-w);
   white-space: nowrap;
+  line-height: 1;
 }
 .hud-clock .date {
   font-size: 12px;
-  opacity: 0.8;
+  color: var(--g-ink-dim);
+  translate: 0 -1px;
 }
 .hud-clock .time {
-  font-size: 16px;
-  font-weight: bold;
+  font: 700 20px/1 '5by7', monospace; /* 20 px — пиксель буквы ровно в 2 пикселя экрана */
+  letter-spacing: 0;
+  color: var(--g-ember);
+  text-shadow: 0 0 6px var(--g-ember-glow);
 }
 
-/* Работа: плитки в утопленной рамке */
+/* Работа: строки — утопленные экранчики */
 .hud-work {
   flex: 1 1 360px; /* 360 — наименьшая ширина, лишнее место делится между блоками */
   display: flex;
@@ -665,52 +850,40 @@ textarea {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 6px;
-  border-radius: 14px;
-  background: var(--blue-b);
-  box-shadow: var(--blue-b-inset);
-  border: 2px solid var(--blue-b-edge);
-  scrollbar-width: thin;
-  scrollbar-color: var(--blue-b-edge) transparent;
 }
 .jobs {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
+  padding-right: 2px;
 }
 .job {
-  padding: 2px 9px 3px;
-  border-radius: 9px;
-  border-left: 4px solid var(--accent);
-  background: var(--chrome-soft);
-  box-shadow: 0 2px 3px rgba(20, 25, 110, 0.3), inset 0 1px 0 #fff;
-  line-height: 1.2;
+  --k: 0.5;
+  padding: 0 6px 1px;
+  line-height: 1.15;
 }
 .job-place {
   font-size: 13px;
-  font-weight: bold;
+  color: var(--g-ink);
 }
 .job-role {
-  font-size: 12px;
-  opacity: 0.8;
+  font-size: 11.5px;
+  color: var(--g-ink-dim);
 }
 
-/* «пара слов»: текст от лица персонажа на светлой «бумаге» */
+/* «пара слов»: текст от лица персонажа в тёмном экранчике */
 .hud-note {
   flex: 1.3 1 320px; /* тексту достаётся больше свободного места */
-  height: 230px; /* как блок с портретом: по краям высокие блоки, в середине низкие */
+  height: 240px; /* как карточка персонажа: по краям высокие блоки, в середине низкие */
   display: flex;
   flex-direction: column;
-  border-radius: 28px 28px 22px 22px;
 }
 .note-text {
-  padding: 7px 11px;
-  background: linear-gradient(180deg, #e9edff 0%, #f6f7ff 30%, #ffffff 100%);
-  box-shadow: inset 0 3px 5px rgba(20, 25, 110, 0.3);
-  color: var(--blue-b-ink);
-  text-shadow: none;
+  --k: 0.7;
+  padding: 2px 6px 2px 4px;
   font-size: 13px;
-  line-height: 1.35;
+  line-height: 1.38;
+  color: var(--g-ink);
 }
 .note-text p {
   margin: 0 0 6px;
@@ -736,25 +909,12 @@ textarea {
 .side-tab {
   width: 32px;
   height: 32px;
-  padding: 0;
-  display: grid;
-  place-items: center;
-  font-size: 16px;
-  border-radius: 10px;
-  border: 2px solid var(--chrome-edge);
-  background: var(--chrome-soft);
-  box-shadow: 0 2px 3px rgba(30, 30, 100, 0.3), inset 0 1px 0 #fff;
-  cursor: pointer;
-  opacity: 0.8;
-}
-.side-tab:hover {
-  opacity: 1;
+  font-size: 15px;
+  opacity: 0.75;
 }
 .side-tab.active {
   opacity: 1;
-  border-color: var(--blue-b-edge);
-  background: var(--blue-b-raised);
-  box-shadow: 0 0 0 2px var(--accent), 0 2px 3px rgba(30, 30, 100, 0.3);
+  filter: drop-shadow(0 0 5px rgba(255, 110, 30, 0.55));
 }
 .side-content {
   flex: 1;
@@ -767,60 +927,45 @@ textarea {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding-bottom: 6px;
+  padding-bottom: 4px;
 }
 
-/* Цвет шкал по заполненности: зелёный, жёлтый, красный */
+/* Цвет шкал по заполненности: зелёный, жёлтый, красный — тлеющие, с бликом сверху */
 .good {
-  background: linear-gradient(90deg, #58b032, #b8ec7a 70%, #e4ffc4);
+  --glow: rgba(140, 190, 70, 0.45);
+  background: linear-gradient(180deg, #c2df86, #789844 55%, #4f6a28);
 }
 .mid {
-  background: linear-gradient(90deg, #c99a12, #f2dc5a 70%, #fff6b8);
+  --glow: rgba(230, 160, 40, 0.45);
+  background: linear-gradient(180deg, #f0be62, #ad761e 55%, #6e4a10);
 }
 .low {
-  background: linear-gradient(90deg, #b8301f, #f07a5a 70%, #ffc9b5);
+  --glow: rgba(220, 50, 40, 0.5);
+  background: linear-gradient(180deg, #e86a58, #9f211f 55%, #5e1010);
 }
-/* Потребности: две колонки, подпись над полоской */
+/* Потребности: две колонки, подпись над желобком */
 .needs {
   display: grid;
   grid-template-columns: 1fr 1fr;
   grid-auto-flow: column;
-  gap: 6px 18px;
+  gap: 4px 16px;
 }
 .need-label {
-  font-size: 13px;
-  font-weight: bold;
+  font-size: 12px;
   text-align: center;
-  margin-bottom: 2px;
+  margin-bottom: 1px;
+  color: var(--g-ink);
 }
 .need-bar {
-  position: relative;
-  height: 11px;
-  border-radius: 6px;
-  overflow: hidden;
-  border: 2px solid var(--blue-b-edge);
-  background: var(--blue-b);
-  box-shadow: var(--blue-b-inset);
+  --k: 0.72;
 }
-.need-fill {
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  border-radius: 0 4px 4px 0;
-}
-
-/* Подсказка у значков интересов и вкладок */
+/* Подсказка у значков интересов и вкладок: маленькая деревянная табличка */
 #ui .hud-tip {
   position: fixed;
   z-index: 30;
-  max-width: 220px;
-  padding: 5px 11px 6px;
-  border-radius: 10px;
-  border: 2px solid var(--chrome-edge);
-  background: var(--chrome-soft);
-  color: var(--chrome-ink);
-  box-shadow: var(--chrome-shadow);
+  max-width: 230px;
+  padding: 4px 12px 6px;
+  color: var(--g-ink);
   pointer-events: none;
   opacity: 0;
   transform: translateY(4px);
@@ -830,8 +975,8 @@ textarea {
   opacity: 1;
   transform: none;
 }
-.hud-tip-title {
-  font-size: 10px; /* в пиксельном шрифте 10 px — один пиксель буквы на пиксель экрана */
+#ui .hud-tip-title {
+  font-size: 16px;
   margin-bottom: 2px;
 }
 .hud-tip-text {
@@ -877,104 +1022,105 @@ textarea {
     right: 6px;
     bottom: 6px;
     display: grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr); /* не шире экрана, что бы ни было внутри */
     gap: 0;
     align-items: stretch;
   }
   .hud-block ~ .hud-block::before {
-    display: none;
+    display: none; /* блоки друг под другом — скобы не нужны */
+  }
+  .hud-block {
+    --k: 0.65;
   }
   .hud-me {
-    display: grid;
-    grid-template-columns: 68px auto 1fr auto;
+    height: auto;
+    grid-template-columns: 74px auto 1fr auto;
     grid-template-areas:
       'p n n a'
       'p i c a';
-    align-items: center;
-    gap: 6px 10px;
-    padding: 8px 10px;
-    border-radius: 22px;
-    margin-bottom: 8px;
+    gap: 4px 8px;
+    padding: 4px 8px 6px;
+    margin-bottom: 6px;
   }
   .hud-me-row {
     display: contents;
   }
   .hud-portrait {
     grid-area: p;
-    width: 64px;
-    height: 64px;
-    border-radius: 16px;
+    width: 74px;
+    height: 74px;
   }
-  .hud-name {
+  .hud .hud-name {
     grid-area: n;
+    font-size: 20px;
     overflow: hidden;
     text-overflow: ellipsis;
+    padding-left: 0;
   }
   .hud-interests {
-    grid-area: i;
+    gap: 3px;
   }
   .interest {
-    width: 32px;
-    height: 32px;
-    font-size: 17px;
+    width: 30px;
+    height: 30px;
+    font-size: 14px;
   }
   .hud-clock {
-    grid-area: c;
     justify-self: start;
-    padding: 2px 10px;
+    height: 34px;
   }
   .hud-clock .date {
     display: none;
   }
   .hud-action-col {
     grid-area: a;
-    width: 58px;
-    padding-top: 6px;
+    width: 54px;
   }
   .hud-action {
-    width: 42px;
-    height: 42px;
-    font-size: 22px;
+    width: 40px;
+    height: 40px;
+    font-size: 20px;
+  }
+  .hud-action-label {
+    font-size: 11px;
   }
 
-  /* Вкладки — как корешки папок над блоком */
+  /* Вкладки — бархатные таблички над блоком: активная выпуклая и тлеет, остальные утоплены.
+     Ширина вкладки — по длине слова, чтобы длинное слово не упиралось в железные углы. */
   .hud-mtabs {
     display: flex;
-    gap: 4px;
-    padding: 0 16px;
+    gap: 2px;
+    padding: 0 2px;
+    margin-bottom: 2px;
   }
   .hud-mtabs button {
-    /* пиксельный 5by7, как заголовки. 20 px не влезает («потребности» — 132 px),
-       15 px — точка буквы 1,5 px: на экранах телефонов (плотность 2–3) всё равно чётко.
-       Ширина вкладки — по длине слова, чтобы длинное слово не упиралось в края. */
+    --k: 0.8;
+    min-width: 0;
     flex: 1 1 auto;
-    padding: 7px 6px 8px;
-    font: 700 15px/1 '5by7', monospace;
+    height: calc(48px * var(--k));
+    padding: 0 4px 2px;
+    box-sizing: border-box;
+    font: 700 16px/1 'Old Standard TT', serif;
     letter-spacing: 0;
-    color: #fff;
-    border: 2px solid var(--blue-b-edge);
-    border-bottom: 0;
-    border-radius: 14px 14px 0 0;
-    background: linear-gradient(180deg, #c3cdff 0%, #8d9ef0 60%, #7486e4 100%);
-    text-shadow: 0 1px 1px rgba(20, 30, 120, 0.6);
+    color: var(--g-ink-dim);
+    text-shadow: 0 1px 2px #000;
+    background: none;
+    border-style: solid;
+    border-width: calc(var(--k) * var(--ui-tab-wt)) calc(var(--k) * var(--ui-tab-wr))
+      calc(var(--k) * var(--ui-tab-wb)) calc(var(--k) * var(--ui-tab-wl));
+    border-image: var(--ui-tab) var(--ui-tab-slice) fill;
     cursor: pointer;
   }
   .hud-mtabs button.active {
-    color: var(--hud-ink);
-    text-shadow: 0 1px 0 #fff;
-    border-color: var(--chrome-edge);
-    background: linear-gradient(180deg, #ffffff, #eceef8);
-    /* корешок сливается с блоком под ним */
-    position: relative;
-    z-index: 1;
-    margin-bottom: -2px;
-    padding-bottom: 10px;
+    border-image-source: var(--ui-tab-active);
+    color: #fff0d6;
+    text-shadow: 0 0 8px rgba(255, 140, 50, 0.7), 0 1px 2px #000;
   }
   .hud-work,
   .hud-side,
   .hud-note {
     width: auto;
-    height: 158px;
+    height: 170px;
   }
   .hud:not([data-mtab='side']) .hud-side,
   .hud:not([data-mtab='work']) .hud-work,
@@ -1178,8 +1324,8 @@ textarea {
   scrollbar-color: var(--chrome-edge) transparent;
 }
 
-/* Круглые кнопки-крестики: голубые глянцевые шарики, как в старых плеерах */
-.hud-action .cancel,
+/* Круглые кнопки-крестики: голубые глянцевые шарики, как в старых плеерах
+   (у нижней панели крестик уже новый — .skin-close) */
 .panel-x,
 .notice-x,
 .banner-x {
@@ -1195,7 +1341,6 @@ textarea {
   box-shadow: 0 0 0 2px #fff, 0 2px 4px rgba(20, 20, 80, 0.45);
   cursor: pointer;
 }
-.hud-action .cancel:hover,
 .panel-x:hover,
 .notice-x:hover,
 .banner-x:hover {
