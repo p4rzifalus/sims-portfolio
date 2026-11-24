@@ -18,6 +18,7 @@ import {
   welcome,
   dossier,
   radio as radioData,
+  lighting,
 } from './data.js';
 import { typoDeep } from './typo.js';
 import { buildRoom } from './room.js';
@@ -67,10 +68,20 @@ applyPS1(built.group);
 scene.add(built.group);
 
 // Свет: мягкий общий + направленный «из окна-за-кадром» + торшер (внутри комнаты).
-scene.add(new THREE.HemisphereLight('#fff1dc', '#4a3b55', 2.2));
-const sun = new THREE.DirectionalLight('#fff4e0', 2.0);
-sun.position.set(8, 10, 6);
-scene.add(sun);
+// Если в data.js есть lighting (особняк, этап 14) — полумрак: слабый общий свет и холодный из окна.
+if (lighting) {
+  const { ambient, moon } = lighting;
+  scene.add(new THREE.HemisphereLight(ambient.sky, ambient.ground, ambient.intensity));
+  const moonLight = new THREE.DirectionalLight(moon.color, moon.intensity);
+  moonLight.position.set(...moon.from);
+  moonLight.target.position.set(room.columns / 2, 0, room.rows / 2);
+  scene.add(moonLight, moonLight.target);
+} else {
+  scene.add(new THREE.HemisphereLight('#fff1dc', '#4a3b55', 2.2));
+  const sun = new THREE.DirectionalLight('#fff4e0', 2.0);
+  sun.position.set(8, 10, 6);
+  scene.add(sun);
+}
 
 // ---------- Камера ----------
 // Ближняя и дальняя границы с запасом вокруг комнаты (камера в 20 клетках от центра).
