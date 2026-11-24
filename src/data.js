@@ -20,12 +20,35 @@ export const room = {
   columns: 6, // ширина в клетках (вдоль задней стены, где окно)
   rows: 5, // глубина в клетках (вдоль левой стены)
   wallHeight: 2.6, // высота стен (1 = одна клетка)
+  // Особняк (этап 14): высота деревянных панелей по низу стен. Убрать строку — вернётся
+  // светлая студия (обои в ромбик, доски вместо ёлочки, без панелей и карниза).
+  wainscot: 0.9,
   colors: {
-    floor: '#a9743f', // доски пола
-    wallpaper: '#c9b99a', // обои
-    wood: '#6e4526', // дерево мебели
-    wallTop: '#efe6d2', // срез стен сверху
+    floor: '#5e3c24', // паркет «ёлочкой» (в студии — доски)
+    wallpaper: '#3d3a26', // фон обоев
+    wallpaperPattern: '#6e6440', // узор на обоях
+    wainscot: '#4a2e1c', // деревянные панели по низу стен
+    wood: '#6e4526', // дерево мебели (старой)
+    mahogany: '#7a4028', // красное дерево мебели особняка
+    leather: '#2f4a32', // кожа на столешнице
+    wallTop: '#4a382c', // срез стен сверху
     chairSeat: '#7a3b3b', // сиденье стула
+  },
+};
+
+// ---------- Свет (этап 14) ----------
+// Общий свет почти погашен: комнату освещают лампы (поля light* у торшера, lampLight у стола)
+// и холодный свет ночи из окна.
+export const lighting = {
+  ambient: { sky: '#6a5844', ground: '#1a120e', intensity: 1.6 }, // общий: сверху тёплый, снизу почти чёрный
+  moon: { color: '#8a9ed8', intensity: 0.8, from: [4.5, 5, -3] }, // из окна на задней стене, в комнату
+  // Запечённый свет на полу и стенах (tools/blender/bake.py → public/textures/bake/).
+  // Убрать строку — пол и стены освещаются живыми лампами, как мебель.
+  flicker: 0.06, // мерцание ламп и ореолов (0 — ровный свет)
+  baked: {
+    dir: 'textures/bake/',
+    brightness: 1.3, // ярче / темнее запечённого света на полу и стенах
+    exposure: 2, // как сжаты значения в файлах (читает и bake.py; менять — только с перезапеканием)
   },
 };
 
@@ -37,9 +60,10 @@ export const ps1 = {
   // Дрожание у персонажей: 0 — без дрожания, 2 — вдвое слабее комнаты, 1 — как у комнаты.
   // У маленьких лиц от дрожания «рвутся» глаза и очки, поэтому по умолчанию выключено.
   characterSnap: 0,
-  colorLevels: 24, // сколько оттенков на канал (меньше = грубее палитра)
+  colorLevels: 32, // сколько оттенков на канал (меньше = грубее палитра); 32 — 15-битный цвет, как на PS1 (было 24)
+  vignette: 0.45, // затемнение по краям кадра (0 — нет)
   dither: 1.0, // сила «зерна» на переходах цвета (0 = выключить)
-  fogColor: '#2a2438', // цвет тумана и фона вокруг комнаты
+  fogColor: '#0c0908', // цвет тумана и фона вокруг комнаты (особняк — почти чёрный; в студии было '#2a2438')
   fogStrength: 0.02, // плотность тумана (0 = нет тумана)
   cameraSway: true, // едва заметное покачивание камеры, чтобы дрожание было видно (без дрожания не нужно)
   animationFps: 15, // своих персонажей двигать «на двойках»: 15 поз в секунду (0 — плавно)
@@ -119,9 +143,9 @@ export const characters = [
     id: 'p2',
     name: 'паша архангельский',
     forms: { nom: 'паша', gen: 'паши', dat: 'паше', acc: 'пашу', ins: 'пашей' },
-    model: 'character-male-a',
+    model: 'pasha', // своя PS1-модель (public/models/people/pasha.glb); прежняя — 'character-male-a'
     color: '#4aa3c7',
-    startCell: [5, 4],
+    startCell: [4, 4], // [5, 4] теперь занят столиком с лампой
     startFacing: 'south',
     needs: { hunger: 5, comfort: 7, energy: 6, fun: 8, social: 6, environment: 10 },
     interests: [
@@ -314,19 +338,24 @@ export const furniture = [
   // --- окно во всю заднюю стену, за ним петербург ---
   {
     id: 'window',
-    type: 'panoramicWindow',
+    type: 'mansionWindow', // окно особняка со шторами; прежнее во всю стену — 'panoramicWindow'
     wall: 'north',
     cells: [[3, 0], [4, 0], [5, 0]],
     blocks: false,
+    view: 'night', // петербург ночью; без строки — белая ночь
+    curtainColor: '#5a1a1e', // бархат штор
+    shafts: 0.1, // лучи ночного света из окна: яркость (0 — без лучей)
+    shaftReach: 1.9, // как далеко в комнату ложатся лучи (в клетках от стены)
   },
 
   // --- рабочее место: длинный стол, два макбука, два стула ---
   {
     id: 'desk',
-    type: 'designDesk',
+    type: 'mansionDesk', // стол особняка; прежний белый — 'designDesk'
     cells: [[3, 0], [4, 0], [5, 0]], // ближе к центру — на телефоне влезает в кадр
     blocks: true,
     facing: 'south',
+    lampLight: { color: '#ffb35c', intensity: 2.5, distance: 3, decay: 1.5, halo: 0.45 }, // свет настольной лампы и размер ореола
   },
   {
     id: 'macbook-1',
@@ -380,31 +409,49 @@ export const furniture = [
   },
   {
     id: 'chair-1',
-    type: 'designChair',
+    type: 'mansionChair', // стул особняка; прежний стул-чаша — 'designChair'
     cells: [[3, 1]],
     blocks: false, // на эту клетку персонаж встаёт, чтобы сесть
     facing: 'north',
-    color: '#efece6',
+    color: '#6a1f24', // обивка (бархат)
   },
   {
     id: 'chair-2',
-    type: 'designChair',
+    type: 'mansionChair',
     cells: [[5, 1]],
     blocks: false,
     facing: 'north',
-    color: '#e8833a',
+    color: '#6a1f24',
+  },
+
+  // --- передний правый угол: столик с лампой (этап 14) — свет в нижней части комнаты ---
+  {
+    id: 'side-lamp',
+    type: 'sideLamp',
+    cells: [[5, 4]],
+    blocks: true,
+    lightColor: '#ffbf70',
+    lightIntensity: 4,
+    lightDistance: 5,
+    lightDecay: 1.2,
+    halo: 0.6,
   },
 
   // --- у задней стены слева: торшер и книжный шкаф ---
   {
     id: 'lamp',
-    type: 'floorLamp',
+    type: 'mansionFloorLamp', // латунь и абажур с бахромой; прежний — 'floorLamp'
     cells: [[0, 0]],
     blocks: true,
+    lightColor: '#ffb35c', // тёплый свет торшера
+    lightIntensity: 5,
+    lightDistance: 6,
+    lightDecay: 1.2,
+    halo: 0.9, // размер ореола вокруг абажура (0 — без ореола)
   },
   {
     id: 'bookcase',
-    type: 'bookcase',
+    type: 'mansionBookcase', // тёмное дерево, книги в старых переплётах; прежний белый — 'bookcase'
     name: 'книжный шкаф',
     cells: [[1, 0], [2, 0]],
     blocks: true,
@@ -433,6 +480,7 @@ export const furniture = [
     blocks: true,
     facing: 'east',
     model: 'furniture/sofa.glb', // готовая модель; без этой строки — диван из коробок
+    tint: '#d86a70', // перекраска модели (особняк: бордовый бархат); без строки — как в файле
     color: '#5b6e9c', // цвет обивки (только у дивана из коробок)
     // Двое могут сесть рядом: персонаж займёт первое свободное место из spots.
     actions: [
@@ -451,13 +499,54 @@ export const furniture = [
   },
   {
     id: 'plant',
-    type: 'plant',
+    type: 'mansionPlant', // пальма в латунной кадке; прежнее растение — 'plant'
     cells: [[0, 1]], // у дивана, со стороны торшера
     blocks: true,
   },
   {
+    id: 'painting',
+    type: 'painting', // картина маслом в золочёной раме (нарисована кодом)
+    wall: 'west',
+    cells: [[0, 1]], // над пальмой
+    blocks: false,
+    height: 1.7, // центр картины по высоте
+    size: [0.5, 0.62],
+    seed: 3, // другой номер — другой пейзаж
+  },
+  // бра по бокам от плаката
+  {
+    id: 'sconce-1',
+    type: 'sconce',
+    wall: 'west',
+    cells: [[0, 2]],
+    shift: -0.27, // вдоль стены от центра клетки
+    blocks: false,
+    height: 1.75,
+    lightColor: '#ffbf70',
+    lightIntensity: 1.6,
+    lightDistance: 3,
+    lightDecay: 1.5,
+    halo: 0.35,
+  },
+  {
+    id: 'sconce-2',
+    type: 'sconce',
+    wall: 'west',
+    cells: [[0, 3]],
+    shift: 0.27,
+    blocks: false,
+    height: 1.75,
+    lightColor: '#ffbf70',
+    lightIntensity: 1.6,
+    lightDistance: 3,
+    lightDecay: 1.5,
+    halo: 0.35,
+  },
+  {
     id: 'poster',
     type: 'poster',
+    frame: 'gold', // золочёная рама, как у картины; без строки — тонкая чёрная
+    selfLit: '#d9cfbe', // светится сам (не зависит от ламп), цвет — насколько ярко и тепло; без строки — как вся комната
     wall: 'west',
     cells: [[0, 2], [0, 3]], // висит над диваном
     blocks: false,
@@ -470,7 +559,7 @@ export const furniture = [
   },
   {
     id: 'wardrobe',
-    type: 'wardrobe',
+    type: 'mansionWardrobe', // прежний светлый — 'wardrobe'
     cells: [[0, 4]], // одна клетка — одна дверь (две клетки — две двери); у дивана, в переднем углу
     blocks: true,
     facing: 'east',
@@ -481,7 +570,11 @@ export const furniture = [
     type: 'rug',
     cells: [[1, 2], [2, 2], [3, 2], [1, 3], [2, 3], [3, 3]],
     blocks: false,
-    color: '#8c3b3b',
+    pattern: 'persian', // персидский орнамент; без строки — простой ковёр с ромбом
+    color: '#6e1c1c', // поле ковра
+    gold: '#b98f45',
+    navy: '#1c2440',
+    cream: '#d2c3a0', // бахрома
   },
 ];
 
