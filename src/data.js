@@ -143,7 +143,7 @@ export const characters = [
     id: 'p2',
     name: 'паша архангельский',
     forms: { nom: 'паша', gen: 'паши', dat: 'паше', acc: 'пашу', ins: 'пашей' },
-    model: 'character-male-a',
+    model: 'pasha', // своя PS1-модель (public/models/people/pasha.glb); прежняя — 'character-male-a'
     color: '#4aa3c7',
     startCell: [4, 4], // [5, 4] теперь занят столиком с лампой
     startFacing: 'south',
