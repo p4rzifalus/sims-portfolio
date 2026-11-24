@@ -4,6 +4,11 @@ import '@fontsource/inter/cyrillic-600.css';
 import '@fontsource/inter/latin-600.css';
 import '@fontsource/inter/cyrillic-700.css';
 import '@fontsource/inter/latin-700.css';
+// заголовки нового интерфейса (этап 20) — антиква с кириллицей, только жирная
+import '@fontsource/old-standard-tt/cyrillic-700.css';
+import '@fontsource/old-standard-tt/latin-700.css';
+// набор деталей интерфейса: картинки и переменные --ui-* (собирает tools/ui/slice.mjs)
+import './ui/kit.css';
 import * as THREE from 'three';
 import {
   room,

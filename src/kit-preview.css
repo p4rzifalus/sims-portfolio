@@ -1,0 +1,322 @@
+/* Стили страницы-превью /kit.html. Здесь же — черновик того, как куски собираются в элементы;
+   на шаге 20.2 удачные приёмы переедут в style.css. */
+body {
+  margin: 0;
+  padding: 24px 32px 80px;
+  background: #0e0c0b;
+  color: #d9c7a8;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+.title {
+  font-family: 'Old Standard TT', serif;
+  font-weight: 700;
+  letter-spacing: 0;
+  color: #e8d6b4;
+  text-shadow: 0 2px 2px rgba(0, 0, 0, 0.8);
+  margin: 0 0 8px;
+}
+h1.title { font-size: 32px; }
+h2.title { font-size: 22px; margin: 36px 0 14px; color: #b08d62; }
+h3.title { font-size: 22px; text-align: center; }
+p { margin: 6px 0; font-size: 14px; }
+.row { display: flex; flex-wrap: wrap; gap: 28px; align-items: center; margin-bottom: 24px; }
+
+/* ---------- рамка из 9 кусков ----------
+   Картинка рамки рисуется через border-image (углы не тянутся, стороны тянутся), а дерево
+   или бархат внутри — отдельным тайлом на ::before, чтобы волокна не растягивались. */
+.frame,
+.frame-small,
+.well,
+.bar,
+.tab,
+.clock,
+.pill {
+  position: relative;
+  box-sizing: border-box;
+  border-style: solid;
+  border-width: 0;
+}
+/* Дерево/бархат — тайлом на ::before (под рамкой), сама рамка — на ::after поверх:
+   иначе слой с отрицательным z-index ложится на края рамки. */
+.frame,
+.frame-small {
+  isolation: isolate;
+  --skin: var(--ui-frame);
+  --slice: var(--ui-frame-slice);
+  --bw: var(--ui-frame-w);
+  --fill: var(--ui-wood);
+  --inset: 12px;
+  padding: 30px 40px;
+}
+.frame-small {
+  display: inline-block;
+  --skin: var(--ui-frame-small);
+  --slice: var(--ui-frame-small-slice);
+  --bw: var(--ui-frame-small-w);
+  --inset: 6px;
+  padding: 14px 26px;
+}
+.frame.velvet {
+  --skin: var(--ui-frame-velvet);
+  --fill: var(--ui-velvet);
+}
+.frame::before,
+.frame-small::before,
+.frame::after,
+.frame-small::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+}
+.frame::before,
+.frame-small::before {
+  inset: var(--inset);
+  z-index: -1;
+  background: var(--fill) 0 0 / var(--ui-wood-size);
+}
+.frame::after,
+.frame-small::after {
+  inset: 0;
+  border-style: solid;
+  border-width: 0;
+  border-image: var(--skin) var(--slice) / var(--bw);
+}
+
+.well {
+  padding: 14px 18px;
+  border-image: var(--ui-well) var(--ui-well-slice) fill / var(--ui-well-w);
+}
+.clock {
+  display: grid;
+  place-items: center;
+  width: 110px;
+  height: 46px;
+  font-size: 20px;
+  color: #f0c88a;
+  text-shadow: 0 0 6px rgba(255, 140, 40, 0.6);
+  border-image: var(--ui-clock) var(--ui-clock-slice) fill / var(--ui-clock-w);
+}
+.scroll {
+  position: relative;
+  width: 14.5px;
+  height: 150px;
+  border-style: solid;
+  border-width: 0;
+  border-image: var(--ui-scroll-track) var(--ui-scroll-track-slice) fill / var(--ui-scroll-track-w);
+}
+.scroll i {
+  position: absolute;
+  left: 50%;
+  top: 30px;
+  width: 10px;
+  height: 22px;
+  translate: -50% 0;
+  background: var(--ui-scroll-thumb) center / contain no-repeat;
+}
+
+/* ---------- шкала ----------
+   Желобок — картинка, заливка — цветом кодом (зелёный / жёлтый / красный, как сейчас). */
+.bars .need { width: 200px; text-align: center; font-size: 13px; }
+.bars .need.wide { width: 360px; }
+.bar {
+  height: 22.5px;
+  margin-top: 4px;
+  border-image: var(--ui-bar) var(--ui-bar-slice) fill / var(--ui-bar-w);
+}
+.bar i {
+  position: absolute;
+  left: 11px;
+  top: 6px;
+  bottom: 6px;
+  max-width: calc(100% - 22px);
+  border-radius: 6px;
+  box-shadow: inset 0 2px 1px rgba(255, 255, 255, 0.35), inset 0 -2px 2px rgba(0, 0, 0, 0.4), 0 0 6px currentColor;
+}
+.bar i.good { color: rgba(140, 190, 70, 0.5); background: linear-gradient(180deg, #b6d77a, #789844 60%, #4f6a28); }
+.bar i.mid { color: rgba(230, 160, 40, 0.5); background: linear-gradient(180deg, #e8b45a, #ad761e 60%, #6e4a10); }
+.bar i.low { color: rgba(220, 50, 40, 0.5); background: linear-gradient(180deg, #e06050, #9f211f 60%, #5e1010); }
+
+/* ---------- кнопки ---------- */
+button { font: inherit; letter-spacing: inherit; cursor: pointer; }
+/* Текст — по центру деревянной середины плашки, а не всей картинки: под плашкой в картинке
+   место для свечения, середина выше центра на ~1 px и правее на ~1 px; и строчные буквы
+   без заглавных выглядят ниже середины строки. Поэтому текст поднят на 2 px и сдвинут на 1 px. */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 43px;
+  min-width: 120px;
+  padding: 0 33px 4px 35px;
+  line-height: 1;
+  background: none;
+  color: #f0dcbc;
+  font-size: 15px;
+  text-shadow: 0 1px 2px #000;
+  border-image: var(--ui-pill) var(--ui-pill-slice) fill / var(--ui-pill-w);
+}
+/* Наведение и нажатие — та же картинка плашки, меняется только свет: картинки «наведение» и
+   «нажата» из gpt-image нарисованы заново и чуть другой формы, при подмене контур дёргался.
+   Наведение: светлее + тлеющий ореол по контуру (drop-shadow повторяет форму плашки) +
+   уголёк снизу на дереве (::after, смешивание screen). Нажатие: темнее, ореол меньше. */
+.pill,
+.round,
+.close {
+  transition: filter 0.12s ease-out;
+}
+.pill::after,
+.round::after,
+.close::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  mix-blend-mode: screen;
+  transition: opacity 0.12s ease-out;
+}
+.pill::after {
+  background: radial-gradient(28% 30% at 51% 74%, rgba(255, 140, 50, 0.75), rgba(255, 90, 20, 0.25) 55%, transparent);
+}
+.round::after,
+.close::after {
+  border-radius: 50%;
+  background: radial-gradient(45% 40% at 50% 78%, rgba(255, 140, 50, 0.6), rgba(255, 90, 20, 0.2) 60%, transparent);
+}
+.pill:hover:not(:disabled),
+.round:hover:not(:disabled),
+.close:hover:not(:disabled) {
+  color: #fff3dc;
+  filter: brightness(1.15) drop-shadow(0 0 5px rgba(255, 110, 30, 0.55));
+}
+.pill:hover:not(:disabled)::after,
+.round:hover:not(:disabled)::after,
+.close:hover:not(:disabled)::after {
+  opacity: 1;
+}
+.pill:active:not(:disabled),
+.round:active:not(:disabled),
+.close:active:not(:disabled) {
+  filter: brightness(0.85) drop-shadow(0 0 2px rgba(255, 110, 30, 0.4));
+}
+.pill:active:not(:disabled)::after,
+.round:active:not(:disabled)::after,
+.close:active:not(:disabled)::after {
+  opacity: 0.5;
+}
+.pill:disabled { border-image-source: var(--ui-pill-disabled); color: #8d8a86; cursor: default; }
+.pill.toggle { border-image-source: var(--ui-pill-off); color: #a8957a; }
+.pill.toggle.on { border-image-source: var(--ui-pill-on); color: #fff3dc; }
+
+.round,
+.close {
+  position: relative;
+  border: 0;
+  padding: 0;
+  background: var(--ui-round) center / 100% 100% no-repeat;
+  width: 44.5px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+}
+.round:disabled { background-image: var(--ui-round-disabled); cursor: default; }
+.round:disabled .icon { filter: grayscale(1) brightness(0.7); }
+.close { width: 32px; height: 31.5px; background-image: var(--ui-close); }
+.close:disabled { background-image: var(--ui-close-disabled); cursor: default; }
+.icon { display: block; width: 18px; height: 18px; background: center / contain no-repeat; }
+.icon.play { background-image: var(--ui-icon-play); translate: 1px 0; }
+.icon.pause { background-image: var(--ui-icon-pause); }
+.icon.next { background-image: var(--ui-icon-next); }
+.icon.cross { background-image: var(--ui-icon-cross); }
+
+.tabs { gap: 6px; }
+.tab {
+  height: 48px;
+  min-width: 110px;
+  padding: 0 34px;
+  background: none;
+  color: #9c8565;
+  font-family: 'Old Standard TT', serif;
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: 0;
+  border-image: var(--ui-tab) var(--ui-tab-slice) fill / var(--ui-tab-w);
+}
+.tab.active { border-image-source: var(--ui-tab-active); color: #fff0d6; text-shadow: 0 0 8px rgba(255, 140, 50, 0.7); }
+
+/* ---------- портрет, центр меню, украшения ---------- */
+.portrait { position: relative; width: 98.5px; height: 98.5px; }
+.portrait .face { position: absolute; inset: 16px; }
+.portrait::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--ui-portrait-frame) center / 100% 100%;
+}
+.portrait.selected::after { background-image: var(--ui-portrait-frame-selected); }
+.face {
+  background:
+    radial-gradient(30% 34% at 50% 40%, #c9a58a 0 95%, transparent),
+    radial-gradient(60% 40% at 50% 100%, #3a3a44 0 95%, transparent),
+    var(--ui-velvet) center / 120px;
+}
+.ring-demo { position: relative; width: 70px; height: 68.5px; margin: 0 30px; }
+.ring-demo .face { position: absolute; inset: 9px; border-radius: 50%; }
+.ring-demo .ring { position: absolute; inset: 0; background: var(--ui-bone-ring) center / 100% 100%; }
+.bead {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 10.5px;
+  height: 10.5px;
+  margin: -5.25px;
+  background: var(--ui-bead) center / contain;
+  transform: rotate(var(--a)) translateX(46px);
+}
+.bone-bar {
+  display: block;
+  width: 140px;
+  height: 12.5px;
+  margin: 0 auto;
+  border-style: solid;
+  border-width: 0;
+  border-image: var(--ui-bone-bar) var(--ui-bone-bar-slice) fill / var(--ui-bone-bar-w);
+}
+.ornamented .thorns {
+  position: absolute;
+  left: -14px;
+  top: -14px;
+  width: 67.5px;
+  height: 63px;
+  background: var(--ui-thorns) center / contain no-repeat;
+}
+.ornamented .horns {
+  position: absolute;
+  left: 50%;
+  top: -36px;
+  width: 35.5px;
+  height: 43.5px;
+  translate: -50% 0;
+  background: var(--ui-horns) center / contain no-repeat;
+}
+.ornamented .skull {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  width: 21px;
+  height: 26px;
+  background: var(--ui-skull) center / contain no-repeat;
+}
+.clamp-demo { display: flex; align-items: center; }
+.clamp { width: 49px; height: 22px; margin: 0 -14px; z-index: 1; background: var(--ui-clamp) center / contain no-repeat; }
+
+/* ---------- все куски ---------- */
+.all { align-items: flex-end; gap: 18px; }
+figure { margin: 0; text-align: center; font-size: 11px; color: #8a7558; }
+.piece {
+  background-repeat: no-repeat;
+  outline: 1px dashed rgba(255, 255, 255, 0.12);
+  margin-bottom: 4px;
+}

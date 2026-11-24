@@ -23,7 +23,7 @@ export function createBanners(root, texts) {
   // Возвращает close(): убрать баннер.
   function show({ icon, text, left, right, onClose }) {
     if (current) remove(current);
-    const b = el('div', 'banner');
+    const b = el('div', 'banner skin-frame velvet');
     b.setAttribute('role', 'status');
 
     const face = (who) => {
@@ -43,7 +43,7 @@ export function createBanners(root, texts) {
     b.appendChild(mid);
     b.appendChild(face(right));
 
-    const x = el('button', 'banner-x', '✕');
+    const x = el('button', 'banner-x skin-close', '✕');
     x.type = 'button';
     x.title = texts.cancel;
     x.addEventListener('click', () => onClose?.());
