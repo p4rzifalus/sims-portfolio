@@ -183,7 +183,7 @@ const smooth = (x) => x * x * (3 - 2 * x);
 
 // ---------- PS1 ----------
 const pass = new PS1Pass();
-pass.setPalette(ps1.colorLevels, ps1.dither);
+pass.setPalette(ps1.colorLevels, ps1.dither, ps1.vignette ?? 0);
 let ps1On = ps1.enabledAtStart;
 
 // Размер области, на которую растянута картинка (в CSS-пикселях).

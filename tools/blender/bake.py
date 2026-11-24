@@ -87,6 +87,9 @@ def main():
             continue
         if obj.type != "MESH":
             continue
+        if obj.name.startswith("shaft"):
+            obj.hide_render = True  # лучи из окна — только картинка на сайте
+            continue
         if obj.name.startswith("floor") or obj.name.startswith("wall"):
             obj.hide_render = True  # вместо них — плоскости ниже
         # светящиеся детали (абажур, экраны, вид из окна) не загораживают свет

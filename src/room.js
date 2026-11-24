@@ -2,6 +2,7 @@
 // по описанию из data.js: где стоит предмет, сколько клеток занимает, куда смотрит.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import * as tex from './textures.js';
 import { applyPS1 } from './ps1.js';
 
@@ -86,6 +87,33 @@ function goldFrame(m, W, H, y, f) {
   g.add(box(lip, H, 0.035, m.goldDark, -W / 2 + lip / 2, y - H / 2, 0.03));
   g.add(box(lip, H, 0.035, m.goldDark, W / 2 - lip / 2, y - H / 2, 0.03));
   return g;
+}
+
+// Текстура луча: по длине — от яркого у окна к нулю у пола, по ширине — мягкие края
+// и тёмная полоса посередине (тень переплёта).
+let shaftTex = null;
+function shaftTexture() {
+  if (shaftTex) return shaftTex;
+  const c = document.createElement('canvas');
+  c.width = 32;
+  c.height = 64;
+  const ctx = c.getContext('2d');
+  const img = ctx.createImageData(32, 64);
+  for (let y = 0; y < 64; y++) {
+    for (let x = 0; x < 32; x++) {
+      const along = y / 63; // верх картинки (y = 0, uv.v = 1) — у окна, низ — у пола
+      const across = Math.abs(x - 15.5) / 15.5;
+      let a = Math.pow(1 - along, 1.4) * (1 - Math.pow(across, 4));
+      if (Math.abs(x - 15.5) < 1.5) a *= 0.35;
+      const v = Math.round(255 * Math.max(0, a));
+      const i = (y * 32 + x) * 4;
+      img.data[i] = img.data[i + 1] = img.data[i + 2] = v;
+      img.data[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  shaftTex = new THREE.CanvasTexture(c);
+  return shaftTex;
 }
 
 // Свет лампы с ореолом; ореол мерцает вместе со светом (main.js, lighting.flicker).
@@ -755,6 +783,34 @@ const builders = {
         g.add(box(pleat + 0.01, top - bottom, dz, m.velvet, x, bottom, 0.02 + dz / 2));
       }
     }
+    // Лучи ночного света из окна (этап 14): по наклонной полупрозрачной полосе на каждую
+    // секцию, яркие у стекла и тающие к полу, с тенью от переплёта посередине.
+    // Не ловят клики, не обводятся, при запекании прячутся (имя shaft).
+    if (item.shafts) {
+      const sw = W / w;
+      const mat = new THREE.MeshBasicMaterial({
+        map: shaftTexture(), color: item.shaftColor || '#9fb4ff', transparent: true, opacity: item.shafts,
+        blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false,
+      });
+      const reach = item.shaftReach || 1.9; // как далеко в комнату ложится луч
+      for (let i = 0; i < w; i++) {
+        const x = -W / 2 + sw * (i + 0.5);
+        const geo = new THREE.BufferGeometry();
+        const hw = sw / 2 - 0.05;
+        // верх — у стекла на высоте окна, низ — на полу в глубине комнаты
+        geo.setAttribute('position', new THREE.Float32BufferAttribute([
+          x - hw, y1 - 0.1, 0.06, x + hw, y1 - 0.1, 0.06, x + hw + 0.1, 0.02, reach, x - hw + 0.1, 0.02, reach,
+        ], 3));
+        geo.setAttribute('uv', new THREE.Float32BufferAttribute([0, 1, 1, 1, 1, 0, 0, 0], 2));
+        geo.setIndex([0, 2, 1, 0, 3, 2]);
+        const shaft = new THREE.Mesh(geo, mat);
+        shaft.name = 'shaft';
+        shaft.userData.noSnap = true;
+        shaft.userData.noOutline = true;
+        shaft.raycast = () => {};
+        g.add(shaft);
+      }
+    }
     g.add(box(W + 0.1, 0.24, 0.14, m.velvet, 0, top - 0.24, 0.09)); // ламбрекен
     g.add(box(W + 0.1, 0.035, 0.145, m.gold, 0, top - 0.27, 0.09)); // бахрома
     return g;
@@ -816,6 +872,38 @@ function loadFurnitureModel(obj, item) {
       obj.add(gltf.scene);
     })
     .catch((e) => console.warn(`Не загрузилась модель «${item.model}», остаётся заглушка.`, e));
+}
+
+// Склеить детали предмета с одинаковым материалом в один меш (этап 14): мебель из десятков
+// брусков иначе даёт сотни отдельных отрисовок за кадр — на слабом телефоне это дорого.
+// Не трогаем: детали без обводки (noOutline: тени, лучи), с несколькими материалами,
+// светящиеся «спрайты» и всё, что не меш. Детали без дрожания (noSnap) склеиваются отдельно.
+function mergeByMaterial(group) {
+  group.updateMatrixWorld(true);
+  const toLocal = group.matrixWorld.clone().invert(); // детали — в системе самого предмета
+  const buckets = new Map();
+  group.traverse((o) => {
+    if (!o.isMesh || Array.isArray(o.material) || o.userData.noOutline) return;
+    // детали без дрожания склеиваются отдельно и остаются без дрожания
+    const key = `${o.material.uuid}:${o.userData.noSnap ? 1 : 0}`;
+    if (!buckets.has(key)) buckets.set(key, []);
+    buckets.get(key).push(o);
+  });
+  for (const meshes of buckets.values()) {
+    const { material } = meshes[0];
+    const steadyPart = Boolean(meshes[0].userData.noSnap);
+    if (meshes.length < 2) continue;
+    const geos = meshes.map((o) => {
+      const g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone();
+      return g.applyMatrix4(toLocal.clone().multiply(o.matrixWorld));
+    });
+    const merged = mergeGeometries(geos);
+    if (!merged) continue;
+    for (const o of meshes) o.removeFromParent();
+    const mesh = new THREE.Mesh(merged, material);
+    if (steadyPart) mesh.userData.noSnap = true;
+    group.add(mesh);
+  }
 }
 
 // ---------- Сборка комнаты ----------
@@ -1021,6 +1109,7 @@ export function buildRoom(room, furniture, baked = null) {
     objects[item.id] = obj;
     group.add(obj);
     if (item.model) loadFurnitureModel(obj, item);
+    else mergeByMaterial(obj);
   }
 
   return { group, lights, objects };
