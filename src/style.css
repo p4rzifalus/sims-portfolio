@@ -1029,30 +1029,33 @@ textarea {
   .hud-block ~ .hud-block::before {
     display: none; /* блоки друг под другом — скобы не нужны */
   }
+  /* На телефоне всё компактнее: панель занимает не больше прежней «хромовой» (~290 px
+     по высоте), иначе на невысоких экранах комната становится крошечной. */
   .hud-block {
-    --k: 0.65;
+    --k: 0.55;
+    --inset: 8px;
   }
   .hud-me {
     height: auto;
-    grid-template-columns: 74px auto 1fr auto;
+    grid-template-columns: 62px auto 1fr auto;
     grid-template-areas:
       'p n n a'
       'p i c a';
-    gap: 4px 8px;
-    padding: 4px 8px 6px;
-    margin-bottom: 6px;
+    gap: 2px 6px;
+    padding: 2px 6px 3px;
+    margin-bottom: 4px;
   }
   .hud-me-row {
     display: contents;
   }
   .hud-portrait {
     grid-area: p;
-    width: 74px;
-    height: 74px;
+    width: 62px;
+    height: 62px;
   }
   .hud .hud-name {
     grid-area: n;
-    font-size: 20px;
+    font-size: 18px;
     overflow: hidden;
     text-overflow: ellipsis;
     padding-left: 0;
@@ -1061,28 +1064,62 @@ textarea {
     gap: 3px;
   }
   .interest {
-    width: 30px;
-    height: 30px;
-    font-size: 14px;
+    width: 28px;
+    height: 28px;
+    font-size: 13px;
   }
   .hud-clock {
     justify-self: start;
-    height: 34px;
+    height: 30px;
   }
   .hud-clock .date {
     display: none;
   }
   .hud-action-col {
     grid-area: a;
-    width: 54px;
+    width: 50px;
+    gap: 3px;
   }
   .hud-action {
-    width: 40px;
-    height: 40px;
-    font-size: 20px;
+    width: 36px;
+    height: 36px;
+    font-size: 18px;
+  }
+  .hud .hud-action .cancel {
+    top: -9px;
+    right: -11px;
+    width: 22px;
+    height: 22px;
   }
   .hud-action-label {
+    font-size: 10.5px;
+  }
+  /* Совсем узкие телефоны: часы не влезают рядом с интересами — прячем их */
+  @media (max-width: 360px) {
+    .hud-clock {
+      display: none;
+    }
+  }
+
+  /* строки в блоках — плотнее */
+  .need-label {
     font-size: 11px;
+  }
+  .need-bar {
+    --k: 0.6;
+  }
+  .job {
+    --k: 0.4;
+  }
+  .job-place {
+    font-size: 12px;
+  }
+  .job-role {
+    font-size: 11px;
+  }
+  .note-text {
+    --k: 0.55;
+    font-size: 12.5px;
   }
 
   /* Вкладки — бархатные таблички над блоком: активная выпуклая и тлеет, остальные утоплены.
@@ -1091,16 +1128,17 @@ textarea {
     display: flex;
     gap: 2px;
     padding: 0 2px;
-    margin-bottom: 2px;
+    margin-bottom: 1px;
   }
   .hud-mtabs button {
-    --k: 0.8;
+    --k: 0.66;
     min-width: 0;
     flex: 1 1 auto;
     height: calc(48px * var(--k));
     padding: 0 4px 2px;
     box-sizing: border-box;
-    font: 700 16px/1 'Old Standard TT', serif;
+    font: 700 15px/1 'Old Standard TT', serif;
+    white-space: nowrap;
     letter-spacing: 0;
     color: var(--g-ink-dim);
     text-shadow: 0 1px 2px #000;
@@ -1120,7 +1158,7 @@ textarea {
   .hud-side,
   .hud-note {
     width: auto;
-    height: 170px;
+    height: 158px;
   }
   .hud:not([data-mtab='side']) .hud-side,
   .hud:not([data-mtab='work']) .hud-work,
